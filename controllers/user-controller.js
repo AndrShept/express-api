@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const jdentIcon = require('jdenticon');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 const UserController = {
   register: async (req, res) => {
     const { email, password, username } = req.body;
@@ -48,11 +50,39 @@ const UserController = {
     }
   },
   login: async (req, res) => {
-    await prisma.user.deleteMany();
-    return res.send('ok');
+    const { email, password } = req.body;
+
+    if (!email) {
+      return res.status(404).json({ message: 'Field email required' });
+    }
+    if (!password) {
+      return res.status(404).json({ message: 'Field password required' });
+    }
+    try {
+      const user = await prisma.user.findUnique({
+        where: {
+          email,
+        },
+      });
+      if (!user) {
+        return res.status(404).json({ message: 'Invalid login or password ' });
+      }
+
+      const valid = await bcrypt.compare(password, user.password);
+      if (!valid) {
+        return res.status(404).json({ message: 'Invalid login or password ' });
+      }
+      const token = jwt.sign({ userId: user.id }, process.env.SECRET_KEY);
+      res.status(200).json(user);
+    } catch (error) {
+      console.error(`Internal database error ${error} `);
+      return res.status(500).json({ error: 'Internal database error' });
+    }
+
+
   },
   getUserById: async (req, res) => {
-    const { userId } = await req.body;
+    const { userId } = req.params;
     try {
       const user = prisma.user.findUnique({
         where: { id: userId },
@@ -68,8 +98,7 @@ const UserController = {
     }
   },
   getUserByUsername: async (req, res) => {
-    console.log(req.url);
-    const { username } = req.url;
+    const { username } = req.params;
 
     try {
       const user = await prisma.user.findUnique({
@@ -85,7 +114,17 @@ const UserController = {
     }
   },
   updateUser: async (req, res) => {
-    const {} = await req.body;
+    const { userId } = req.params;
+    const body = req.body;
+    if (!body) {
+      return res.status(404).json({ message: 'body not found!' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { ...body },
+    });
+    res.status(201).json(updatedUser);
     try {
     } catch (error) {
       console.error(`Internal database error ${error} `);
@@ -93,7 +132,7 @@ const UserController = {
     }
   },
   current: async (req, res) => {
-    const {} = await req.body;
+    const {} = req.params;
     try {
     } catch (error) {
       console.error(`Internal database error ${error} `);
