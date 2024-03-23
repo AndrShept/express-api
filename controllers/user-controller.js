@@ -46,7 +46,9 @@ const UserController = {
       return res.status(201).json(newUser);
     } catch (error) {
       console.error(`Error in register ${error} `);
-      return res.status(500).json({ error: 'Internal database error' });
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
     }
   },
   login: async (req, res) => {
@@ -73,28 +75,44 @@ const UserController = {
         return res.status(404).json({ message: 'Invalid login or password ' });
       }
       const token = jwt.sign({ userId: user.id }, process.env.SECRET_KEY);
-      res.status(200).json(user);
+      res.status(200).json({ token });
     } catch (error) {
-      console.error(`Internal database error ${error} `);
-      return res.status(500).json({ error: 'Internal database error' });
+      console.error(`Login error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
     }
-
-
   },
   getUserById: async (req, res) => {
-    const { userId } = req.params;
+    const { id } = req.params;
+    const userId = req.user.userId;
+    console.log(id);
     try {
-      const user = prisma.user.findUnique({
-        where: { id: userId },
+      const user = await prisma.user.findUnique({
+        where: { id },
+        include: { followers: true, following: true },
       });
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
-
-      return res.status(200).json(user);
+      const isFollowing = await prisma.follows.findFirst({
+        where: {
+          AND: [
+            { followerId: userId },
+            {
+              followingId: id,
+            },
+          ],
+        },
+      });
+      return res
+        .status(200)
+        .json({ ...user, isFollowing: Boolean(isFollowing) });
     } catch (error) {
-      console.error(`Internal database error ${error} `);
-      return res.status(500).json({ error: 'Internal database error' });
+      console.error(`User by ID error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
     }
   },
   getUserByUsername: async (req, res) => {
@@ -109,34 +127,76 @@ const UserController = {
       }
       return res.status(200).json(user);
     } catch (error) {
-      console.error(`Internal database error ${error} `);
-      return res.status(500).json({ error: 'Internal database error' });
+      console.error(`User by username error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
     }
   },
   updateUser: async (req, res) => {
-    const { userId } = req.params;
+    const { id } = req.params;
     const body = req.body;
     if (!body) {
       return res.status(404).json({ message: 'body not found!' });
     }
 
+    let filePath;
+    if (req.file && req.file.path) {
+      filePath = req.file.path;
+    }
+    if (id !== req.user.userId) {
+      return res.status(403).json({ message: 'no access' });
+    }
+    if (body.email) {
+      const existingEmail = await prisma.user.findUnique({
+        where: { email: body.email },
+      });
+      if (existingEmail) {
+        return res
+          .status(400)
+          .json({ message: 'Such an email already exists, but another one' });
+      }
+    }
+    if (body.username) {
+      const existingUsername = await prisma.user.findUnique({
+        where: { username: body.username },
+      });
+      if (existingUsername) {
+        return res.status(400).json({
+          message: 'Such an username already exists, but another one',
+        });
+      }
+    }
+
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { ...body },
+      where: { id },
+      data: { ...body, avatarUrl: filePath },
     });
     res.status(201).json(updatedUser);
     try {
     } catch (error) {
-      console.error(`Internal database error ${error} `);
-      return res.status(500).json({ error: 'Internal database error' });
+      console.error(`Update user error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
     }
   },
   current: async (req, res) => {
-    const {} = req.params;
+    const id = req.user.userId;
     try {
+      const user = await prisma.user.findUnique({
+        where: { id },
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      res.status(200).json(user);
     } catch (error) {
-      console.error(`Internal database error ${error} `);
-      return res.status(500).json({ error: 'Internal database error' });
+      console.error(`Current user error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
     }
   },
 };
