@@ -41,7 +41,7 @@ const PostController = {
       );
       res.status(200).json({ ...post, likedByUser: isPostWithLikeUser });
     } catch (error) {
-      console.error(`Get all posts error ${error} `);
+      console.error(`Get  post by ID error ${error} `);
       return res
         .status(500)
         .json({ error: `Internal database error ${error}` });
@@ -122,7 +122,7 @@ const PostController = {
       });
       res.status(200).json({ message: `Post success deleted ${post.id}` });
     } catch (error) {
-      console.error(`Create post error ${error} `);
+      console.error(`Delete post error ${error} `);
       return res
         .status(500)
         .json({ error: `Internal database error ${error}` });

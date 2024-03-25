@@ -4,6 +4,8 @@ const multer = require('multer');
 const UserController = require('../controllers/user-controller');
 const PostController = require('../controllers/post-controller');
 const authToken = require('../middleware/auth');
+const CommentController = require('../controllers/comment-controller');
+const LikeController = require('../controllers/like-controller');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -38,5 +40,13 @@ router.get('/posts/:id', authToken, PostController.getPostById);
 router.post('/posts', authToken, PostController.addPost);
 router.delete('/posts/:id', authToken, PostController.deletePost);
 router.put('/posts/:id', authToken, PostController.editPost);
+
+//COMMENT
+router.post('/comments', authToken, CommentController.addComment);
+router.delete('/comments/:id', authToken, CommentController.deleteComment);
+router.put('/comments/:id', authToken, CommentController.editComment);
+
+//LIKE
+router.post('/like-post/:postId', authToken, LikeController.likePost);
 
 module.exports = router;
