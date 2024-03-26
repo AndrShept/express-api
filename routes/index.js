@@ -6,6 +6,7 @@ const PostController = require('../controllers/post-controller');
 const authToken = require('../middleware/auth');
 const CommentController = require('../controllers/comment-controller');
 const LikeController = require('../controllers/like-controller');
+const FollowController = require('../controllers/follow-conroller');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -30,6 +31,7 @@ const upload = multer({ storage: storage });
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
 router.get('/current', authToken, UserController.current);
+router.get('/users', authToken, UserController.getAllUsers);
 router.get('/users/:id', authToken, UserController.getUserById);
 router.get('/users/:username', authToken, UserController.getUserByUsername);
 router.put('/users/:id', authToken, UserController.updateUser);
@@ -48,5 +50,8 @@ router.put('/comments/:id', authToken, CommentController.editComment);
 
 //LIKE
 router.post('/like-post/:postId', authToken, LikeController.likePost);
+
+//FOLLOW
+router.post('/follow/:id', authToken, FollowController.followUser);
 
 module.exports = router;

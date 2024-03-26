@@ -39,7 +39,7 @@ const UserController = {
           email,
           password: hashedPassword,
           username,
-          avatarUrl: avatarPath,
+          avatarUrl: `/uploads/${avatarName}`,
         },
       });
 
@@ -128,6 +128,34 @@ const UserController = {
       return res.status(200).json(user);
     } catch (error) {
       console.error(`User by username error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
+    }
+  },
+  getAllUsers: async (req, res) => {
+    const userId = req.user.userId;
+    try {
+      const users = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { followers: true, following: true },
+      });
+      if (!users) {
+        return res.status(404).json({ message: 'Users not found' });
+      }
+
+      return res.status(200).json(
+        users.map((user) => {
+          return {
+            ...user,
+            isFollowing: user.followers.some(
+              (follower) => follower.followerId === userId
+            ),
+          };
+        })
+      );
+    } catch (error) {
+      console.error(`Get all users error ${error} `);
       return res
         .status(500)
         .json({ error: `Internal database error ${error}` });
