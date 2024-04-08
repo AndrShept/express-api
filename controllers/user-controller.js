@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+
 const UserController = {
   register: async (req, res) => {
     const { email, password, username } = req.body;
@@ -31,8 +32,8 @@ const UserController = {
       }
       const hashedPassword = await bcrypt.hash(password, 10);
       const png = jdentIcon.toPng(username, 200);
-      const avatarName = `${username}_${new Date().toLocaleDateString()}.png`;
-      const avatarPath = path.join(__dirname, '../uploads', avatarName);
+      const avatarName = `${username}_${Date.now()}.png`;
+      const avatarPath = path.join(__dirname, '/../uploads', avatarName);
       fs.writeFileSync(avatarPath, png);
       const newUser = await prisma.user.create({
         data: {
@@ -67,12 +68,12 @@ const UserController = {
         },
       });
       if (!user) {
-        return res.status(404).json({ message: 'Invalid login or password ' });
+        return res.status(404).json({ message: 'Invalid email or password ' });
       }
 
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
-        return res.status(404).json({ message: 'Invalid login or password ' });
+        return res.status(404).json({ message: 'Invalid email or password ' });
       }
       const token = jwt.sign({ userId: user.id }, process.env.SECRET_KEY);
       res.status(200).json({ token });
@@ -86,7 +87,6 @@ const UserController = {
   getUserById: async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
-    console.log(id);
     try {
       const user = await prisma.user.findUnique({
         where: { id },

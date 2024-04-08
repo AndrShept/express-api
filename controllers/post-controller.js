@@ -49,14 +49,16 @@ const PostController = {
   },
 
   addPost: async (req, res) => {
-    const { content } = req.body;
+    const { content, imageUrl } = req.body;
     const authorId = req.user.userId;
     if (!content) {
       return res.status(404).json({ message: 'Content required field' });
     }
+
     try {
       const newPost = await prisma.post.create({
-        data: { content, authorId },
+        data: { content, authorId, imageUrl: imageUrl ? `${imageUrl}` : '' },
+        include: { author: true },
       });
       res.status(201).json(newPost);
     } catch (error) {

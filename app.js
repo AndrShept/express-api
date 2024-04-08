@@ -4,11 +4,13 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const fs = require('fs');
+const cors = require('cors');
 
 const app = express();
+app.use(cors());
 
 // view engine setup
-app.set('view engine', 'jade');
+
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -23,8 +25,6 @@ if (!fs.existsSync('uploads')) {
 //
 
 app.use('/api', require('./routes'));
-
-
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
