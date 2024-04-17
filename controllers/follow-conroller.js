@@ -4,6 +4,7 @@ const FollowController = {
   followUser: async (req, res) => {
     const userId = req.user.userId;
     const { id } = req.params;
+    
 
     if (userId === id) {
       return res

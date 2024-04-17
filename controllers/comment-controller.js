@@ -51,14 +51,14 @@ const CommentController = {
   editComment: async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
-    const { content, postId } = req.body;
+    const { content } = req.body;
 
     if (!content) {
       return res.status(404).json({ message: 'Content required field' });
     }
-    if (!postId) {
-      return res.status(404).json({ message: 'Post ID not found' });
-    }
+    // if (!postId) {
+    //   return res.status(404).json({ message: 'Post ID not found' });
+    // }
 
     try {
       const comment = await prisma.comment.findUnique({ where: { id } });
@@ -96,6 +96,7 @@ const CommentController = {
       await prisma.comment.delete({
         where: { id },
       });
+      res.status(200).json({ message: 'comment success deleted' });
     } catch (error) {
       console.error(`Delete comment error ${error} `);
       return res

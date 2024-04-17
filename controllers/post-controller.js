@@ -27,7 +27,7 @@ const PostController = {
       const post = await prisma.post.findUnique({
         where: { id },
         include: {
-          comments: { include: { user: true } },
+          comments: { include: { user: true, likes: true, post: true } },
           author: true,
           likes: true,
         },
@@ -39,6 +39,7 @@ const PostController = {
       const isPostWithLikeUser = post.likes.some(
         (like) => like.userId === userId
       );
+
       res.status(200).json({ ...post, likedByUser: isPostWithLikeUser });
     } catch (error) {
       console.error(`Get  post by ID error ${error} `);

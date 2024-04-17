@@ -137,6 +137,7 @@ const UserController = {
     const userId = req.user.userId;
     try {
       const users = await prisma.user.findMany({
+        where: { NOT: { id: userId } },
         orderBy: { createdAt: 'desc' },
         include: { followers: true, following: true },
       });
@@ -168,10 +169,10 @@ const UserController = {
       return res.status(404).json({ message: 'body not found!' });
     }
 
-    let filePath;
-    if (req.file && req.file.path) {
-      filePath = req.file.path;
-    }
+    // let filePath;
+    // if (req.file && req.file.path) {
+    //   filePath = req.file.path;
+    // }
     if (id !== req.user.userId) {
       return res.status(403).json({ message: 'no access' });
     }
@@ -198,7 +199,7 @@ const UserController = {
 
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { ...body, avatarUrl: filePath },
+      data: { ...body ,  },
     });
     res.status(201).json(updatedUser);
     try {

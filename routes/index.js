@@ -14,7 +14,11 @@ router.post('/login', UserController.login);
 router.get('/current', authToken, UserController.current);
 router.get('/users', authToken, UserController.getAllUsers);
 router.get('/users/:id', authToken, UserController.getUserById);
-router.get('/users/:username', authToken, UserController.getUserByUsername);
+router.get(
+  '/users-username/:username',
+  authToken,
+  UserController.getUserByUsername
+);
 router.put('/users/:id', authToken, UserController.updateUser);
 
 //POST
@@ -29,8 +33,10 @@ router.post('/comments', authToken, CommentController.addComment);
 router.delete('/comments/:id', authToken, CommentController.deleteComment);
 router.put('/comments/:id', authToken, CommentController.editComment);
 
-//LIKE
+//LIKE POST
 router.post('/like-post/:postId', authToken, LikeController.likePost);
+//LIKE COMMENT
+router.post('/like-comment/:commentId', authToken, LikeController.likeComment);
 
 //FOLLOW
 router.post('/follow/:id', authToken, FollowController.followUser);
@@ -41,22 +47,14 @@ router.post(
   upload.single('file'),
 
   async function (req, res, next) {
-    console.log(req.body);
-    let filePath;
+    console.log(req.file);
 
-    if (req.file && req.file.path) {
-      filePath = req.file.path;
+    if (req.file && req.file.size > 3 * 1024 * 1024) {
+      return res.send({ message: 'File image cannot be larger than 3mb.' });
     }
 
-    // res.status(200).json({ message: 'ASDSADSADSADAS' });
-    // req.file містить інформацію про завантажений файл
-    // if (req.file.size > 3 * 1024 * 1024) {
-    //   res.send({ message: 'File cannot be larger than 3mb.' });
-    // }
-
     res.send({
-      message: 'File uploaded successfully.',
-      imageUrl: `/uploads/${req.file.filename}`,
+      imageUrl: `/uploads/images/${req.file.filename}`,
     });
   }
 );

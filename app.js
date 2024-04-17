@@ -11,35 +11,43 @@ app.use(cors());
 
 // view engine setup
 
-
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // папка для створення збереження файлів
-app.use('/uploads', express.static('uploads'));
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
+const uploadsPath = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath);
 }
+
+// Шлях до папки "images" у папці "uploads"
+const imagePath = path.join(uploadsPath, 'images');
+
+// Перевіряємо наявність папки "posts"
+if (!fs.existsSync(imagePath)) {
+  fs.mkdirSync(imagePath);
+}
+// Шлях до папки "images" у папці "uploads"
+const pvideoPath = path.join(uploadsPath, 'videos');
+
+// Перевіряємо наявність папки "posts"
+if (!fs.existsSync(pvideoPath)) {
+  fs.mkdirSync(pvideoPath);
+}
+
+app.use('/uploads', express.static('uploads'));
+// if (!fs.existsSync('uploads')) {
+//   fs.mkdirSync('uploads');
+// }
+// app.use('/uploads/post', express.static('uploads/post'));
+// if (!fs.existsSync('post')) {
+//   fs.mkdirSync('post');
+// }
+
 //
 
 app.use('/api', require('./routes'));
-
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-  next(createError(404));
-});
-
-// error handler
-app.use(function (err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
 
 module.exports = app;

@@ -1,14 +1,14 @@
 const multer = require('multer');
 const path = require('path');
-const pathname = path.join(__dirname, '../uploads');
-console.log('pathname --', pathname);
+const imgaesPathname = path.join(__dirname, '../uploads/images');
+const videoPathname = path.join(__dirname, '../uploads/video');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, pathname); // Каталог, куди будуть зберігатися файли
+    if (file.fieldname === 'file') cb(null, imgaesPathname); // Каталог, куди будуть зберігатися файли
+    if (file.fieldname === 'video') cb(null, videoPathname); // Каталог, куди будуть зберігатися файли
   },
   filename: function (req, file, cb) {
-   
     cb(null, Date.now() + '-' + file.originalname); // Генерація унікального імені для файлу
   },
 });
