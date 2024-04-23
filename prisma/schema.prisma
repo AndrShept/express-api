@@ -8,23 +8,53 @@ datasource db {
 }
 
 model User {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  email       String    @unique
-  password    String
-  username    String    @unique
-  avatarUrl   String?
-  dateOfBirth DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  bio         String?
-  location    String?
-  posts       Post[]
-  likes       Like[]
-  comments    Comment[]
-  followers   Follows[] @relation("following")
-  following   Follows[] @relation("follower")
+  id                    String         @id @default(auto()) @map("_id") @db.ObjectId
+  email                 String         @unique
+  password              String
+  username              String         @unique
+  avatarUrl             String?
+  dateOfBirth           DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  bio                   String?
+  location              String?
+  isOnline              Boolean        @default(false)
+  posts                 Post[]
+  likes                 Like[]
+  comments              Comment[]
+  followers             Follows[]      @relation("following")
+  following             Follows[]      @relation("follower")
+  conversationsSent     Conversation[] @relation("sender")
+  conversationsReceived Conversation[] @relation("receiver")
+  message               Message[]
 
   @@map("users")
+}
+
+model Conversation {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  messages     Message[]
+  senderUser   User      @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverUser User      @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  senderId     String    @db.ObjectId
+  receiverId   String    @db.ObjectId
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  content        String
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author         User?         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  conversationId String        @db.ObjectId
+  authorId       String        @db.ObjectId
+
+  @@map("messages")
 }
 
 model Follows {
@@ -46,6 +76,7 @@ model Post {
   likes     Like[]
   comments  Comment[]
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("posts")
 }

@@ -33,14 +33,14 @@ const UserController = {
       const hashedPassword = await bcrypt.hash(password, 10);
       const png = jdentIcon.toPng(username, 200);
       const avatarName = `${username}_${Date.now()}.png`;
-      const avatarPath = path.join(__dirname, '/../uploads', avatarName);
+      const avatarPath = path.join(__dirname, '/../uploads/images', avatarName);
       fs.writeFileSync(avatarPath, png);
       const newUser = await prisma.user.create({
         data: {
           email,
           password: hashedPassword,
           username,
-          avatarUrl: `/uploads/${avatarName}`,
+          avatarUrl: `/uploads/images/${avatarName}`,
         },
       });
 
@@ -117,17 +117,42 @@ const UserController = {
   },
   getUserByUsername: async (req, res) => {
     const { username } = req.params;
-
+    const userId = req.user.userId;
     try {
       const user = await prisma.user.findUnique({
         where: { username },
+        include: {
+          // followers: true,
+          // following: true,
+          _count: {
+            select: {
+              comments: true,
+              followers: true,
+              following: true,
+              posts: true,
+              likes: true,
+            },
+          },
+        },
       });
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
-      return res.status(200).json(user);
+      const isFollowing = await prisma.follows.findFirst({
+        where: {
+          AND: [
+            { followerId: userId },
+            {
+              followingId: user.id,
+            },
+          ],
+        },
+      });
+      return res
+        .status(200)
+        .json({ ...user, isFollowing: Boolean(isFollowing) });
     } catch (error) {
-      console.error(`User by username error ${error} `);
+      console.error(`User by ID error ${error} `);
       return res
         .status(500)
         .json({ error: `Internal database error ${error}` });
@@ -199,7 +224,7 @@ const UserController = {
 
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { ...body ,  },
+      data: { ...body },
     });
     res.status(201).json(updatedUser);
     try {

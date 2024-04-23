@@ -8,6 +8,8 @@ const CommentController = require('../controllers/comment-controller');
 const LikeController = require('../controllers/like-controller');
 const FollowController = require('../controllers/follow-conroller');
 const upload = require('../middleware/multer');
+const ConversationController = require('../controllers/conversation-controller');
+const MessageController = require('../controllers/message-controller');
 
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
@@ -40,6 +42,31 @@ router.post('/like-comment/:commentId', authToken, LikeController.likeComment);
 
 //FOLLOW
 router.post('/follow/:id', authToken, FollowController.followUser);
+
+//CONVERSATION
+router.get(
+  '/conversations',
+  authToken,
+  ConversationController.getAllConversations
+);
+router.get(
+  '/conversations/:conversationId',
+  authToken,
+  ConversationController.getConversationById
+);
+router.post(
+  '/conversations',
+  authToken,
+  ConversationController.addConversation
+);
+router.delete(
+  '/conversations',
+  authToken,
+  ConversationController.deleteConversation
+);
+
+//MESSAGES
+router.post('/messages', authToken, MessageController.addMessage);
 
 //UPLOAD
 router.post(

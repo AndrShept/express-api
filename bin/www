@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+const socketIo = require('socket.io');
+const { prisma } = require('../prisma/prisma');
 
 /**
  * Module dependencies.
@@ -21,12 +23,40 @@ app.set('port', port);
 
 var server = http.createServer(app);
 
-/**
- * Listen on provided port, on all network interfaces.
- */
+const io = socketIo(server, {
+  cors: {
+    origin: '*',
+  },
+});
+const socketUserMap = new Map();
+// Слухайте підключення клієнтів до сокета
+io.on('connection', async (socket) => {
+  console.log('A user connected');
 
-server.listen(port, ()=> {
-  console.log(`Server running port-${port}`)
+  socket.on('userId', async (userId) => {
+
+    if (userId) {
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: { isOnline: true },
+      });
+   
+    }
+  });
+
+  socket.on('disconnect', async () => {
+    // const user = await prisma.user.update({
+    //   where: { id: userId },
+    //   data: { isOnline: false },
+    // });
+    // console.log('USER', user);
+
+    console.log('User disconnected');
+  });
+});
+
+server.listen(port, () => {
+  console.log(`Server running port-${port}`);
 });
 server.on('error', onError);
 server.on('listening', onListening);
@@ -60,9 +90,7 @@ function onError(error) {
     throw error;
   }
 
-  var bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
+  var bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
@@ -85,8 +113,6 @@ function onError(error) {
 
 function onListening() {
   var addr = server.address();
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
+  var bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   debug('Listening on ' + bind);
 }

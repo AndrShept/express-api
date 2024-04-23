@@ -5,7 +5,11 @@ const PostController = {
     const userId = req.user.userId;
     try {
       const posts = await prisma.post.findMany({
-        include: { author: true, comments: true, likes: true },
+        include: {
+          author: true,
+          comments: true,
+          likes: { include: { user: true } },
+        },
         orderBy: { createdAt: 'desc' },
       });
       const postsWithLike = posts.map((post) => ({
@@ -29,7 +33,7 @@ const PostController = {
         include: {
           comments: { include: { user: true, likes: true, post: true } },
           author: true,
-          likes: true,
+          likes: { include: { user: true } },
         },
       });
       if (!post) {
