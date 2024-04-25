@@ -31,19 +31,15 @@ const io = socketIo(server, {
 const socketUserMap = new Map();
 // Слухайте підключення клієнтів до сокета
 io.on('connection', async (socket) => {
-  console.log('A user connected');
+  const userId = socket.handshake.headers;
+  console.log('socket.handshake.headers', userId);
+  // console.log('A user connected' + userId);
 
-  socket.on('userId', async (userId) => {
-
-    if (userId) {
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { isOnline: true },
-      });
-   
-    }
-  });
-
+  // if (userId) {
+  //   const user = await prisma.user.update({
+  //     where: { id: userId },
+  //     data: { isOnline: true },
+  //   });
   socket.on('disconnect', async () => {
     // const user = await prisma.user.update({
     //   where: { id: userId },
@@ -51,7 +47,7 @@ io.on('connection', async (socket) => {
     // });
     // console.log('USER', user);
 
-    console.log('User disconnected');
+    console.log('User disconnected ' + userId);
   });
 });
 

@@ -50,14 +50,22 @@ const ConversationController = {
     }
     try {
       const existConversation = await prisma.conversation.findFirst({
-        where: { OR: [{ receiverId: userId }, { senderId: userId }] },
+        where: {
+          OR: [
+            { receiverId: receiverId, senderId: userId },
+            { receiverId: userId, senderId: receiverId },
+          ],
+          //  [{ receiverId: userId }, { senderId: receiverId }],
+        },
       });
       if (existConversation) {
+        console.log('EXISTEXISTEXISTEXISTEXISTEXIST');
         return res.status(200).json(existConversation);
       }
       const conversation = await prisma.conversation.create({
         data: { receiverId: receiverId, senderId: userId },
       });
+      console.log('CREATCREATECREATECREATEE');
       res.status(200).json(conversation);
     } catch (error) {
       console.error(`create  conversation error ${error} `);
