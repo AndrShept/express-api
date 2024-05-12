@@ -7,16 +7,20 @@ const PostController = {
       const posts = await prisma.post.findMany({
         include: {
           author: true,
-          comments: true,
+          favoritePost: true,
           likes: { include: { user: true } },
+          _count: { select: { comments: true } },
         },
         orderBy: { createdAt: 'desc' },
       });
-      const postsWithLike = posts.map((post) => ({
+      const postsWithLikeWithFavorite = posts.map((post) => ({
         ...post,
         likedByUser: post.likes.some((like) => like.userId === userId),
+        isFavoritePost: post.favoritePost.some(
+          (post) => post.userId === userId
+        ),
       }));
-      res.status(200).json(postsWithLike);
+      res.status(200).json(postsWithLikeWithFavorite);
     } catch (error) {
       console.error(`Get all posts error ${error} `);
       return res
@@ -31,9 +35,10 @@ const PostController = {
       const post = await prisma.post.findUnique({
         where: { id },
         include: {
-          comments: { include: { user: true, likes: true, post: true } },
           author: true,
+          favoritePost: true,
           likes: { include: { user: true } },
+          _count: { select: { comments: true } },
         },
       });
       if (!post) {
@@ -43,8 +48,13 @@ const PostController = {
       const isPostWithLikeUser = post.likes.some(
         (like) => like.userId === userId
       );
+      const isFavoritePost = post.favoritePost.some(
+        (post) => post.userId === userId
+      );
 
-      res.status(200).json({ ...post, likedByUser: isPostWithLikeUser });
+      res
+        .status(200)
+        .json({ ...post, likedByUser: isPostWithLikeUser, isFavoritePost });
     } catch (error) {
       console.error(`Get  post by ID error ${error} `);
       return res

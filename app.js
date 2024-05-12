@@ -8,6 +8,7 @@ const http = require('http');
 const cors = require('cors');
 const socketIo = require('socket.io');
 const { prisma } = require('./prisma/prisma');
+const { userOnline, userOffline } = require('./bin/utils');
 
 const app = express();
 const server = http.createServer(app);
@@ -22,30 +23,28 @@ app.use(cookieParser());
 const io = socketIo(server, {
   cors: {
     origin: '*',
+    
   },
 });
 
 io.on('connection', async (socket) => {
   const userId = socket.handshake.headers.userid;
+  const username = socket.handshake.headers.username;
+  console.log(`A user connected ${username}`);
+  // if (userId) {
+  //   userOnline(userId);
+  // }
+  socket.on('msg', (msg) => {
+    io.emit(msg.conversationId, msg);
+  });
 
-  console.log(`A user connected ${userId}`);
-
-  if (userId) {
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { isOnline: true },
-    });
-  }
   socket.on('disconnect', async () => {
-    if (userId) {
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { isOnline: false },
-      });
-      console.log('USER', user);
-    }
+    
+    // if (userId) {
+    //   userOffline(userId);
+    // }
 
-    console.log(`User disconnected ${userId}`);
+    console.log(`User disconnected ${username}`);
   });
 });
 

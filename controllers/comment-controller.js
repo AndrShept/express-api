@@ -1,19 +1,25 @@
 const { prisma } = require('../prisma/prisma');
 
 const CommentController = {
-  //   getComments: async (req, res) => {
-  //     const userId = req.user.userId;
-  //     try {
-  //         const comments = await prisma.comment.findMany({
-  //             where: {postId }
-  //         })
-  //     } catch (error) {
-  //       console.error(`Get all comments error ${error} `);
-  //       return res
-  //         .status(500)
-  //         .json({ error: `Internal database error ${error}` });
-  //     }
-  //   },
+  getComments: async (req, res) => {
+    const userId = req.user.userId;
+    const { postId } = req.params;
+    if (!postId) {
+      return res.status(404).json({ message: 'post ID not found' });
+    }
+    try {
+      const comments = await prisma.comment.findMany({
+        where: { postId },
+        include: { likes: true, user: true, post: true },
+      });
+      res.status(200).json(comments);
+    } catch (error) {
+      console.error(`Get all comments error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
+    }
+  },
   //   getCommentById: async (req, res) => {
   //     const { id } = req.params;
   //     const userId = req.user.userId;

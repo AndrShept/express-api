@@ -10,6 +10,7 @@ const FollowController = require('../controllers/follow-conroller');
 const upload = require('../middleware/multer');
 const ConversationController = require('../controllers/conversation-controller');
 const MessageController = require('../controllers/message-controller');
+const FavoritePostController = require('../controllers/favoritePost-controller');
 
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
@@ -32,6 +33,7 @@ router.put('/posts/:id', authToken, PostController.editPost);
 
 //COMMENT
 router.post('/comments', authToken, CommentController.addComment);
+router.get('/comments/:postId', authToken, CommentController.getComments);
 router.delete('/comments/:id', authToken, CommentController.deleteComment);
 router.put('/comments/:id', authToken, CommentController.editComment);
 
@@ -64,9 +66,27 @@ router.delete(
   authToken,
   ConversationController.deleteConversation
 );
+router.put(
+  '/conversations/:conversationId',
+  authToken,
+  ConversationController.isReadMessages
+);
 
 //MESSAGES
 router.post('/messages', authToken, MessageController.addMessage);
+router.put('/messages/:messageId', authToken, MessageController.editMessage);
+router.delete(
+  '/messages/:messageId',
+  authToken,
+  MessageController.deleteMessage
+);
+
+//FAVORITE-POST
+router.post(
+  `/favorite-posts/:postId`,
+  authToken,
+  FavoritePostController.addFavorite
+);
 
 //UPLOAD
 router.post(
