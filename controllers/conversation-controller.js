@@ -22,7 +22,6 @@ const ConversationController = {
           ).length,
         })
       );
-
       res.status(200).json(conversationsWithNewMessagesCount);
     } catch (error) {
       console.error(`Get all conversation error ${error} `);

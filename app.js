@@ -1,4 +1,3 @@
-const createError = require('http-errors');
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
@@ -6,9 +5,8 @@ const logger = require('morgan');
 const fs = require('fs');
 const http = require('http');
 const cors = require('cors');
-const socketIo = require('socket.io');
-const { prisma } = require('./prisma/prisma');
-const { userOnline, userOffline } = require('./bin/utils');
+const { Server } = require('socket.io');
+const {  userOffline } = require('./bin/utils');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,41 +17,40 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use('/uploads', express.static('uploads'));
+app.use('/api', require('./routes'));
 
-const io = socketIo(server, {
+const io = new Server(server, {
   cors: {
     origin: '*',
-    
+    credentials: true,
   },
 });
 
 io.on('connection', async (socket) => {
-  const userId = socket.handshake.headers.userid;
+  // const userId = socket.handshake.headers.userid;
+  const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username;
   console.log(`A user connected ${username}`);
-  // if (userId) {
-  //   userOnline(userId);
-  // }
-  socket.on('msg', (msg) => {
+
+  socket.on('msg', async (msg) => {
     io.emit(msg.conversationId, msg);
+    if (msg.conversation.receiverId === userId) {
+      io.emit(msg.conversation.senderId, msg);
+    } else {
+      io.emit(msg.conversation.receiverId, msg);
+    }
   });
 
   socket.on('disconnect', async () => {
-    
-    // if (userId) {
-    //   userOffline(userId);
-    // }
-
     console.log(`User disconnected ${username}`);
+    await userOffline(userId);
   });
 });
 
 server.listen(PORT, () => {
   console.log(`Server running port:${PORT}`);
 });
-
-app.use('/uploads', express.static('uploads'));
-app.use('/api', require('./routes'));
 
 // папка для створення збереження файлів
 const uploadsPath = path.join(__dirname, 'uploads');
@@ -65,7 +62,7 @@ if (!fs.existsSync(uploadsPath)) {
 const imagePath = path.join(uploadsPath, 'images');
 const videoPath = path.join(uploadsPath, 'videos');
 
-// Перевіряємо наявність папки "posts"
+// Перевіряємо наявність папки
 if (!fs.existsSync(imagePath)) {
   fs.mkdirSync(imagePath);
 }

@@ -23,6 +23,8 @@ router.get(
   UserController.getUserByUsername
 );
 router.put('/users/:id', authToken, UserController.updateUser);
+router.put('/users-online', authToken, UserController.userOnline);
+router.put('/users-offline/:userId', UserController.userOffline);
 
 //POST
 router.get('/posts', authToken, PostController.getPosts);

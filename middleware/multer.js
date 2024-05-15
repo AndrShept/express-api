@@ -15,13 +15,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// router.post('/upload', upload.single('file'), async function (req, res, next) {
-//   // req.file містить інформацію про завантажений файл
-//   if (req.file.size > 3 * 1024 * 1024) {
-//     res.send({ message: 'File cannot be larger than 3mb.' });
-//   }
 
-//   res.send({ message: 'File uploaded successfully.', data: req.file });
-// });
 
 module.exports = upload;

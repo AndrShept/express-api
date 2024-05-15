@@ -253,6 +253,36 @@ const UserController = {
         .json({ error: `Internal database error ${error}` });
     }
   },
+  userOnline: async (req, res) => {
+    const userId = req.user.userId;
+    try {
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { isOnline: true },
+      });
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      console.error(`userOnline  error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
+    }
+  },
+  userOffline: async (req, res) => {
+    const { userId } = req.params;
+    try {
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { isOnline: false },
+      });
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      console.error(`userOffline  error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
+    }
+  },
 };
 
 module.exports = UserController;

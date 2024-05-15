@@ -20,7 +20,7 @@ const MessageController = {
           authorId,
           imageUrl,
         },
-        include: { author: true },
+        include: { author: true, conversation: true },
       });
       res.status(201).json({ ...newMessage, type: 'create' });
     } catch (error) {
@@ -44,7 +44,7 @@ const MessageController = {
     const updatedMessage = await prisma.message.update({
       where: { id: messageId },
       data: { ...body },
-      include: { author: true },
+      include: { author: true, conversation: true },
     });
     res.status(200).json({ ...updatedMessage, type: 'update' });
 
@@ -67,6 +67,7 @@ const MessageController = {
 
     const deletedMessage = await prisma.message.delete({
       where: { id: messageId },
+      include: {conversation: true}
     });
     res.status(200).json({ ...deletedMessage, type: 'delete' });
 
