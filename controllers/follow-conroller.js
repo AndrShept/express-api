@@ -4,12 +4,9 @@ const FollowController = {
   followUser: async (req, res) => {
     const userId = req.user.userId;
     const { id } = req.params;
-    
 
     if (userId === id) {
-      return res
-        .status(400)
-        .json({ message: 'You cannot follow to yourself' });
+      return res.status(400).json({ message: 'You cannot follow to yourself' });
     }
     try {
       const existingFollow = await prisma.follows.findFirst({
@@ -34,6 +31,9 @@ const FollowController = {
           followingId: id,
         },
         include: { following: { select: { username: true } } },
+      });
+      await prisma.notification.create({
+        data: { authorId: userId, userId: id, type: 'follower' },
       });
 
       res.status(201).json({

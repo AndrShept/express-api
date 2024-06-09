@@ -5,7 +5,6 @@ const MessageController = {
     const { content, conversationId, authorId, imageUrl } = req.body;
     const userId = req.user.userId;
 
-
     if (!conversationId) {
       return res.status(404).json({ message: 'conversationId not found' });
     }
@@ -56,6 +55,27 @@ const MessageController = {
         .json({ error: `Internal database error ${error}` });
     }
   },
+  isReadOnceMessage: async (req, res) => {
+    const { messageId } = req.params;
+    const userId = req.user.userId;
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    const updatedMessage = await prisma.message.update({
+      where: { id: messageId },
+      data: { isRead: true, updatedAt: message.createdAt },
+      include: { author: true, conversation: true },
+    });
+    res.status(200).json({ ...updatedMessage, type: 'update' });
+
+    try {
+    } catch (error) {
+      console.error(`Update message error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
+    }
+  },
 
   deleteMessage: async (req, res) => {
     const { messageId } = req.params;
@@ -67,7 +87,7 @@ const MessageController = {
 
     const deletedMessage = await prisma.message.delete({
       where: { id: messageId },
-      include: {conversation: true}
+      include: { conversation: true },
     });
     res.status(200).json({ ...deletedMessage, type: 'delete' });
 

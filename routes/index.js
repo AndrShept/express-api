@@ -11,11 +11,14 @@ const upload = require('../middleware/multer');
 const ConversationController = require('../controllers/conversation-controller');
 const MessageController = require('../controllers/message-controller');
 const FavoritePostController = require('../controllers/favoritePost-controller');
+const NotificationController = require('../controllers/notification-controller');
+const ReplyController = require('../controllers/reply-controller');
 
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
 router.get('/current', authToken, UserController.current);
 router.get('/users', authToken, UserController.getAllUsers);
+router.get('/users-following', authToken, UserController.getAllFollowingUsers);
 router.get('/users/:id', authToken, UserController.getUserById);
 router.get(
   '/users-username/:username',
@@ -38,6 +41,11 @@ router.post('/comments', authToken, CommentController.addComment);
 router.get('/comments/:postId', authToken, CommentController.getComments);
 router.delete('/comments/:id', authToken, CommentController.deleteComment);
 router.put('/comments/:id', authToken, CommentController.editComment);
+//Reply
+router.post('/reply', authToken, ReplyController.addReply);
+router.get('/reply/:commentId', authToken, ReplyController.getReplysByCommentId);
+router.delete('/reply/:commentId', authToken, ReplyController.deleteReply);
+// router.put('/comments/:id', authToken, CommentController.editComment);
 
 //LIKE POST
 router.post('/like-post/:postId', authToken, LikeController.likePost);
@@ -77,6 +85,11 @@ router.put(
 //MESSAGES
 router.post('/messages', authToken, MessageController.addMessage);
 router.put('/messages/:messageId', authToken, MessageController.editMessage);
+router.put(
+  '/messages-isRead/:messageId',
+  authToken,
+  MessageController.isReadOnceMessage
+);
 router.delete(
   '/messages/:messageId',
   authToken,
@@ -88,6 +101,22 @@ router.post(
   `/favorite-posts/:postId`,
   authToken,
   FavoritePostController.addFavorite
+);
+//NOTIFICATION
+router.get(
+  `/notifications`,
+  authToken,
+  NotificationController.getNotifications
+);
+router.delete(
+  `/notifications`,
+  authToken,
+  NotificationController.clearAllNotifications
+);
+router.put(
+  `/notifications/:notificationId`,
+  authToken,
+  NotificationController.updateNotification
 );
 
 //UPLOAD

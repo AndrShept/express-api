@@ -160,9 +160,16 @@ const UserController = {
   },
   getAllUsers: async (req, res) => {
     const userId = req.user.userId;
+
     try {
+      const findFollowingUser = await prisma.follows.findMany({
+        where: { followerId: userId },
+        select: { followingId: true },
+      });
+      const followingId = findFollowingUser.map((item) => item.followingId);
+
       const users = await prisma.user.findMany({
-        where: { NOT: { id: userId } },
+        where: { id: { notIn: [...followingId, userId] } },
         orderBy: { createdAt: 'desc' },
         include: { followers: true, following: true },
       });
@@ -179,6 +186,31 @@ const UserController = {
             ),
           };
         })
+      );
+    } catch (error) {
+      console.error(`Get all users error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
+    }
+  },
+  getAllFollowingUsers: async (req, res) => {
+    const userId = req.user.userId;
+    try {
+      const users = await prisma.follows.findMany({
+        where: { followerId: userId },
+        include: { follower: true, following: true },
+        orderBy: { follower: { username: 'asc' } },
+      });
+      if (!users) {
+        return res.status(404).json({ message: 'Users not found' });
+      }
+
+      return res.status(200).json(
+        users.map((user) => ({
+          ...user.following,
+          isFollowing: users.some((user) => user.followerId === userId),
+        }))
       );
     } catch (error) {
       console.error(`Get all users error ${error} `);

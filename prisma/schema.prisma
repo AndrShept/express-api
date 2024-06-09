@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NotificationType {
+  message
+  like
+  comment
+  post
+  follower
+}
+
 model User {
   id                    String         @id @default(auto()) @map("_id") @db.ObjectId
   email                 String         @unique
@@ -26,11 +34,39 @@ model User {
   conversationsReceived Conversation[] @relation("receiver")
   message               Message[]
   favoritePosts         FavoritePost[]
+  viewPost              View[]
+  notification          Notification[] @relation("author")
+  notificationReceiver  Notification[] @relation("receiver")
+  reply                 Reply[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model Notification {
+  id     String           @id @default(auto()) @map("_id") @db.ObjectId
+  type   NotificationType
+  isRead Boolean          @default(false)
+
+  user       User?    @relation("receiver", fields: [userId], references: [id], onDelete: Cascade)
+  userId     String?  @db.ObjectId
+  author     User?    @relation("author", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId   String?  @db.ObjectId
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId     String?  @db.ObjectId
+  follower   Follows? @relation(fields: [followerId], references: [id], onDelete: Cascade)
+  followerId String?  @db.ObjectId
+  like       Like?    @relation(fields: [likeId], references: [id], onDelete: Cascade)
+  likeId     String?  @db.ObjectId
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId  String?  @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
 }
 
 model FavoritePost {
@@ -83,6 +119,8 @@ model Follows {
   following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
   followingId String @db.ObjectId
 
+  notifications Notification[]
+
   @@map("follows")
 }
 
@@ -95,11 +133,26 @@ model Post {
   likes        Like[]
   comments     Comment[]
   favoritePost FavoritePost[]
+  view         View[]
+  notification Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("posts")
+}
+
+model View {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String? @db.ObjectId
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("views")
 }
 
 model Like {
@@ -110,21 +163,43 @@ model Like {
   postId    String?  @db.ObjectId
   Comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   commentId String?  @db.ObjectId
+  reply     Reply?   @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  replyId   String?  @db.ObjectId
+
+  notifications Notification[]
 
   @@map("likes")
 }
 
 model Comment {
-  id      String @id @default(auto()) @map("_id") @db.ObjectId
-  content String
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId  String @db.ObjectId
-  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId  String @db.ObjectId
-  likes   Like[]
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  content       String
+  author        User?          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId      String?        @db.ObjectId
+  post          Post?          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId        String?        @db.ObjectId
+  likes         Like[]
+  notifications Notification[]
+  reply         Reply[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("comments")
+}
+
+model Reply {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  content       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  comment       Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId     String   @db.ObjectId
+
+  author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId      String   @db.ObjectId
+
+  likes Like[]
+
+  @@map("replys")
 }

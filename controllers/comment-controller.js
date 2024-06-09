@@ -10,7 +10,7 @@ const CommentController = {
     try {
       const comments = await prisma.comment.findMany({
         where: { postId },
-        include: { likes: true, user: true, post: true },
+        include: { likes: true, author: true, post: true },
       });
       res.status(200).json(comments);
     } catch (error) {
@@ -20,20 +20,21 @@ const CommentController = {
         .json({ error: `Internal database error ${error}` });
     }
   },
-  //   getCommentById: async (req, res) => {
-  //     const { id } = req.params;
-  //     const userId = req.user.userId;
-  //     try {
-  //     } catch (error) {
-  //       console.error(`Get comment by ID  error ${error} `);
-  //       return res
-  //         .status(500)
-  //         .json({ error: `Internal database error ${error}` });
-  //     }
-  //   },
+  // getCommentById: async (req, res) => {
+  //   const { id } = req.params;
+  //   const userId = req.user.userId;
+  //   try {
+  //   } catch (error) {
+  //     console.error(`Get comment by ID  error ${error} `);
+  //     return res
+  //       .status(500)
+  //       .json({ error: `Internal database error ${error}` });
+  //   }
+  // },
 
   addComment: async (req, res) => {
     const { content, postId } = req.body;
+    console.log('req. req.', req.body);
 
     const userId = req.user.userId;
     if (!content) {
@@ -44,7 +45,7 @@ const CommentController = {
     }
     try {
       const newComment = await prisma.comment.create({
-        data: { postId, userId, content },
+        data: { postId, content, authorId: userId },
       });
       res.status(201).json(newComment);
     } catch (error) {
@@ -68,18 +69,29 @@ const CommentController = {
 
     try {
       const comment = await prisma.comment.findUnique({ where: { id } });
-      if (!comment) {
-        return res.status(404).json({ message: 'Comment  not found' });
+      const reply = await prisma.reply.findUnique({ where: { id } });
+      if (!comment && !reply) {
+        return res
+          .status(404)
+          .json({ message: 'Comment or Replys  not found' });
       }
-      if (comment.userId !== userId) {
-        return res.status(403).json({ message: 'No access' });
+      // if (comment.authorId !== userId || reply.authorId !== userId) {
+      //   return res.status(403).json({ message: 'No access' });
+      // }
+      if (comment) {
+        const updatedComment = await prisma.comment.update({
+          data: { content },
+          where: { id },
+        });
+        res.status(200).json(updatedComment);
       }
-
-      const updatedComment = await prisma.comment.update({
-        data: { content },
-        where: { id },
-      });
-      res.status(200).json(updatedComment);
+      if (reply) {
+        const updatedReply = await prisma.reply.update({
+          data: { content },
+          where: { id },
+        });
+        res.status(200).json(updatedReply);
+      }
     } catch (error) {
       console.error(`Update comment error ${error} `);
       return res
@@ -96,7 +108,7 @@ const CommentController = {
       if (!comment) {
         return res.status(404).json({ message: 'Comment  not found' });
       }
-      if (comment.userId !== userId) {
+      if (comment.authorId !== userId) {
         return res.status(403).json({ message: 'No access' });
       }
       await prisma.comment.delete({

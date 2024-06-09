@@ -6,7 +6,7 @@ const fs = require('fs');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
-const {  userOffline } = require('./bin/utils');
+const { userOffline } = require('./bin/utils');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,7 +28,7 @@ const io = new Server(server, {
 });
 
 io.on('connection', async (socket) => {
-  // const userId = socket.handshake.headers.userid;
+
   const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username;
   console.log(`A user connected ${username}`);

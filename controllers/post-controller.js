@@ -9,7 +9,7 @@ const PostController = {
           author: true,
           favoritePost: true,
           likes: { include: { user: true } },
-          _count: { select: { comments: true } },
+          _count: { select: { comments: true, view: true } },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -32,13 +32,21 @@ const PostController = {
     const { id } = req.params;
     const userId = req.user.userId;
     try {
+      const viewUserExist = await prisma.view.findFirst({
+        where: { postId: id, userId },
+      });
+      if (!viewUserExist) {
+        await prisma.view.create({
+          data: { postId: id, userId },
+        });
+      }
       const post = await prisma.post.findUnique({
         where: { id },
         include: {
           author: true,
           favoritePost: true,
           likes: { include: { user: true } },
-          _count: { select: { comments: true } },
+          _count: { select: { comments: true, view: true } },
         },
       });
       if (!post) {
@@ -71,10 +79,31 @@ const PostController = {
     }
 
     try {
+      const userFollowers = await prisma.follows.findMany({
+        where: { followingId: authorId },
+      });
+      console.log('userFollowers', userFollowers);
+
       const newPost = await prisma.post.create({
         data: { content, authorId, imageUrl: imageUrl ? `${imageUrl}` : '' },
         include: { author: true },
       });
+
+      const notificationsAllFollowerUsers = userFollowers.map((follower) => {
+        return {
+          type: 'post',
+          postId: newPost.id,
+          userId: follower.followerId,
+          authorId,
+        };
+      });
+
+      if (notificationsAllFollowerUsers.length) {
+        const newNotifications = await prisma.notification.createMany({
+          data: notificationsAllFollowerUsers,
+        });
+      }
+
       res.status(201).json(newPost);
     } catch (error) {
       console.error(`Create post error ${error} `);
