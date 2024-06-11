@@ -3,7 +3,7 @@ const { prisma } = require('../prisma/prisma');
 const ReplyController = {
   addReply: async (req, res) => {
     const userId = req.user.userId;
-    const { content, commentId } = req.body;
+    const { content, commentId, postId } = req.body;
     if (!commentId) {
       return res.status(404).json({ message: 'commentId not found' });
     }
@@ -11,9 +11,16 @@ const ReplyController = {
       return res.status(404).json({ message: 'content not found' });
     }
 
+
     try {
-      const newReply = await prisma.reply.create({
-        data: { commentId, content, authorId: userId },
+      const newReply = await prisma.comment.create({
+        data: {
+          replyId: commentId,
+          authorId: userId,
+          content,
+          parentId: postId
+         
+        },
       });
       res.status(200).json(newReply);
     } catch (error) {
@@ -59,12 +66,10 @@ const ReplyController = {
         },
         select: { commentId: true },
       });
-      res
-        .status(200)
-        .json({
-          message: 'comment success deleted',
-          commentId: deletedComment.commentId,
-        });
+      res.status(200).json({
+        message: 'comment success deleted',
+        commentId: deletedComment.commentId,
+      });
     } catch (error) {
       console.error(`deleteReply comments error ${error} `);
       return res

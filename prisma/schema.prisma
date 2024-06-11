@@ -37,7 +37,7 @@ model User {
   viewPost              View[]
   notification          Notification[] @relation("author")
   notificationReceiver  Notification[] @relation("receiver")
-  reply                 Reply[]
+  // reply                 Reply[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -163,8 +163,8 @@ model Like {
   postId    String?  @db.ObjectId
   Comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   commentId String?  @db.ObjectId
-  reply     Reply?   @relation(fields: [replyId], references: [id], onDelete: Cascade)
-  replyId   String?  @db.ObjectId
+  // reply     Reply?   @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  // replyId   String?  @db.ObjectId
 
   notifications Notification[]
 
@@ -180,7 +180,11 @@ model Comment {
   postId        String?        @db.ObjectId
   likes         Like[]
   notifications Notification[]
-  reply         Reply[]
+
+  replyId  String?
+  parentId String?
+  reply    Comment?  @relation("ParentChildren", fields: [replyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replys   Comment[] @relation("ParentChildren")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -188,18 +192,18 @@ model Comment {
   @@map("comments")
 }
 
-model Reply {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  content       String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  comment       Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  commentId     String   @db.ObjectId
+// model Reply {
+//   id            String   @id @default(auto()) @map("_id") @db.ObjectId
+//   content       String
+//   createdAt     DateTime @default(now())
+//   updatedAt     DateTime @updatedAt
+//   comment       Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+//   commentId     String   @db.ObjectId
 
-  author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId      String   @db.ObjectId
+//   author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+//   authorId      String   @db.ObjectId
 
-  likes Like[]
+//   likes Like[]
 
-  @@map("replys")
-}
+//   @@map("replys")
+// }

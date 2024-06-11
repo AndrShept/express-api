@@ -47,10 +47,8 @@ router.get('/reply/:commentId', authToken, ReplyController.getReplysByCommentId)
 router.delete('/reply/:commentId', authToken, ReplyController.deleteReply);
 // router.put('/comments/:id', authToken, CommentController.editComment);
 
-//LIKE POST
-router.post('/like-post/:postId', authToken, LikeController.likePost);
-//LIKE COMMENT
-router.post('/like-comment/:commentId', authToken, LikeController.likeComment);
+//ADD LIKE 
+router.post('/like/:id', authToken, LikeController.addLike);
 
 //FOLLOW
 router.post('/follow/:id', authToken, FollowController.followUser);

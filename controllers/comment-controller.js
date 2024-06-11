@@ -10,8 +10,15 @@ const CommentController = {
     try {
       const comments = await prisma.comment.findMany({
         where: { postId },
-        include: { likes: true, author: true, post: true },
+        include: {
+          likes: true,
+          author: true,
+          post: true,
+        },
       });
+      for (const comment of comments) {
+        comment.replys = await getReplies(comment.id);
+      }
       res.status(200).json(comments);
     } catch (error) {
       console.error(`Get all comments error ${error} `);
@@ -20,17 +27,6 @@ const CommentController = {
         .json({ error: `Internal database error ${error}` });
     }
   },
-  // getCommentById: async (req, res) => {
-  //   const { id } = req.params;
-  //   const userId = req.user.userId;
-  //   try {
-  //   } catch (error) {
-  //     console.error(`Get comment by ID  error ${error} `);
-  //     return res
-  //       .status(500)
-  //       .json({ error: `Internal database error ${error}` });
-  //   }
-  // },
 
   addComment: async (req, res) => {
     const { content, postId } = req.body;
@@ -63,34 +59,22 @@ const CommentController = {
     if (!content) {
       return res.status(404).json({ message: 'Content required field' });
     }
-    // if (!postId) {
-    //   return res.status(404).json({ message: 'Post ID not found' });
-    // }
 
     try {
       const comment = await prisma.comment.findUnique({ where: { id } });
-      const reply = await prisma.reply.findUnique({ where: { id } });
-      if (!comment && !reply) {
-        return res
-          .status(404)
-          .json({ message: 'Comment or Replys  not found' });
+
+      if (!comment) {
+        return res.status(404).json({ message: 'Comment   not found' });
       }
-      // if (comment.authorId !== userId || reply.authorId !== userId) {
-      //   return res.status(403).json({ message: 'No access' });
-      // }
+      if (comment.authorId !== userId) {
+        return res.status(403).json({ message: 'No access' });
+      }
       if (comment) {
         const updatedComment = await prisma.comment.update({
           data: { content },
           where: { id },
         });
         res.status(200).json(updatedComment);
-      }
-      if (reply) {
-        const updatedReply = await prisma.reply.update({
-          data: { content },
-          where: { id },
-        });
-        res.status(200).json(updatedReply);
       }
     } catch (error) {
       console.error(`Update comment error ${error} `);
@@ -111,6 +95,8 @@ const CommentController = {
       if (comment.authorId !== userId) {
         return res.status(403).json({ message: 'No access' });
       }
+      await deleteReplies(id);
+
       await prisma.comment.delete({
         where: { id },
       });
@@ -123,5 +109,37 @@ const CommentController = {
     }
   },
 };
+
+async function deleteReplies(commentId) {
+  const replies = await prisma.comment.findMany({
+    where: { replyId: commentId },
+    include: { replys: true },
+  });
+
+  for (const reply of replies) {
+    await deleteReplies(reply.id);
+
+    await prisma.comment.delete({
+      where: { id: reply.id },
+    });
+  }
+}
+
+async function getReplies(commentId) {
+  const replies = await prisma.comment.findMany({
+    where: { replyId: commentId },
+    include: {
+      likes: true,
+      author: true,
+      post: true,
+    },
+  });
+
+  for (const reply of replies) {
+    reply.replys = await getReplies(reply.id);
+  }
+
+  return replies;
+}
 
 module.exports = CommentController;
