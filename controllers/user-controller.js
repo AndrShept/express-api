@@ -131,6 +131,8 @@ const UserController = {
               following: true,
               posts: true,
               likes: true,
+              message: true,
+              photos: true
             },
           },
         },
@@ -160,6 +162,10 @@ const UserController = {
   },
   getAllUsers: async (req, res) => {
     const userId = req.user.userId;
+    let { searchValue } = req.params;
+    if (searchValue === 'undefined' || searchValue === 'null') {
+      searchValue = undefined;
+    }
 
     try {
       const findFollowingUser = await prisma.follows.findMany({
@@ -167,9 +173,14 @@ const UserController = {
         select: { followingId: true },
       });
       const followingId = findFollowingUser.map((item) => item.followingId);
-
       const users = await prisma.user.findMany({
-        where: { id: { notIn: [...followingId, userId] } },
+        where: {
+          id: { notIn: [...followingId, userId] },
+          username: {
+            startsWith: searchValue,
+          },
+        },
+
         orderBy: { createdAt: 'desc' },
         include: { followers: true, following: true },
       });

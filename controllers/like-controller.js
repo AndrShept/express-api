@@ -80,6 +80,39 @@ const LikeController = {
           });
         res.status(201).json({ message: 'You liked comment' });
       }
+      if (type === 'photo') {
+        const likeExisting = await prisma.like.findFirst({
+          where: { photoId: id, userId },
+        });
+        if (likeExisting) {
+          await prisma.like.deleteMany({
+            where: { photoId: id, userId },
+          });
+          await prisma.notification.deleteMany({
+            where: {
+              authorId: userId,
+              photoId: id,
+            },
+          });
+          return res.status(200).json({ message: 'You unlike photo' });
+        }
+        const findAuthorLike = await prisma.photo.findUnique({
+          where: { id },
+        });
+        await prisma.like.create({
+          data: { photoId: id, userId },
+        });
+        if (findAuthorLike.userId !== userId)
+          await prisma.notification.create({
+            data: {
+              authorId: userId,
+              userId: findAuthorLike.userId,
+              photoId: id,
+              type: 'like',
+            },
+          });
+        res.status(201).json({ message: 'You liked photo' });
+      }
     } catch (error) {
       console.error(`Error in create like  ${error} `);
       return res

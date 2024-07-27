@@ -6,6 +6,7 @@ const videoPathname = path.join(__dirname, '../uploads/video');
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     if (file.fieldname === 'file') cb(null, imagesPathname); // Каталог, куди будуть зберігатися файли
+    if (file.fieldname === 'files') cb(null, imagesPathname); // Каталог, куди будуть зберігатися файли
     if (file.fieldname === 'video') cb(null, videoPathname); // Каталог, куди будуть зберігатися файли
   },
   filename: function (req, file, cb) {

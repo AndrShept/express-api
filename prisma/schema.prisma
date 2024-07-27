@@ -37,12 +37,33 @@ model User {
   viewPost              View[]
   notification          Notification[] @relation("author")
   notificationReceiver  Notification[] @relation("receiver")
-  // reply                 Reply[]
+  photos                Photo[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model Photo {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  url  String
+  size Int
+  name String
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
+
+  likes        Like[]
+  comments     Comment[]
+  view         View[]
+  notification Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("photos")
 }
 
 model Notification {
@@ -62,6 +83,8 @@ model Notification {
   likeId     String?  @db.ObjectId
   comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   commentId  String?  @db.ObjectId
+  photo      Photo?   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId    String?  @db.ObjectId
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -151,22 +174,23 @@ model View {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  photo     Photo?   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId   String?  @db.ObjectId
 
   @@map("views")
 }
 
 model Like {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String   @db.ObjectId
-  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String?  @db.ObjectId
-  Comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  commentId String?  @db.ObjectId
-  // reply     Reply?   @relation(fields: [replyId], references: [id], onDelete: Cascade)
-  // replyId   String?  @db.ObjectId
-
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String         @db.ObjectId
+  post          Post?          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId        String?        @db.ObjectId
+  Comment       Comment?       @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId     String?        @db.ObjectId
   notifications Notification[]
+  photo         Photo?         @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId       String?        @db.ObjectId
 
   @@map("likes")
 }
@@ -188,22 +212,8 @@ model Comment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  photo     Photo?   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId   String?  @db.ObjectId
 
   @@map("comments")
 }
-
-// model Reply {
-//   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-//   content       String
-//   createdAt     DateTime @default(now())
-//   updatedAt     DateTime @updatedAt
-//   comment       Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-//   commentId     String   @db.ObjectId
-
-//   author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-//   authorId      String   @db.ObjectId
-
-//   likes Like[]
-
-//   @@map("replys")
-// }

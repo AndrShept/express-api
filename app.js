@@ -44,7 +44,7 @@ io.on('connection', async (socket) => {
 
   socket.on('disconnect', async () => {
     console.log(`User disconnected ${username}`);
-    await userOffline(userId);
+    // await userOffline(userId);
   });
 });
 

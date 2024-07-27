@@ -13,11 +13,12 @@ const MessageController = require('../controllers/message-controller');
 const FavoritePostController = require('../controllers/favoritePost-controller');
 const NotificationController = require('../controllers/notification-controller');
 const ReplyController = require('../controllers/reply-controller');
+const PhotoController = require('../controllers/photo-controller');
 
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
 router.get('/current', authToken, UserController.current);
-router.get('/users', authToken, UserController.getAllUsers);
+router.get('/users/:searchValue?', authToken, UserController.getAllUsers);
 router.get('/users-following', authToken, UserController.getAllFollowingUsers);
 router.get('/users/:id', authToken, UserController.getUserById);
 router.get(
@@ -29,8 +30,19 @@ router.put('/users/:id', authToken, UserController.updateUser);
 router.put('/users-online', authToken, UserController.userOnline);
 router.put('/users-offline/:userId', UserController.userOffline);
 
+//PHOTO
+
+router.post(
+  '/users-photo',
+  authToken,
+  upload.array('files'),
+  PhotoController.addPhotos
+);
+router.get('/users-photo/:username', authToken, PhotoController.getPhotosByUsername);
+
 //POST
 router.get('/posts', authToken, PostController.getPosts);
+router.get('/favorite-posts', authToken, PostController.getFavoritePosts);
 router.get('/posts/:id', authToken, PostController.getPostById);
 router.post('/posts', authToken, PostController.addPost);
 router.delete('/posts/:id', authToken, PostController.deletePost);
@@ -43,11 +55,15 @@ router.delete('/comments/:id', authToken, CommentController.deleteComment);
 router.put('/comments/:id', authToken, CommentController.editComment);
 //Reply
 router.post('/reply', authToken, ReplyController.addReply);
-router.get('/reply/:commentId', authToken, ReplyController.getReplysByCommentId);
+router.get(
+  '/reply/:commentId',
+  authToken,
+  ReplyController.getReplysByCommentId
+);
 router.delete('/reply/:commentId', authToken, ReplyController.deleteReply);
 // router.put('/comments/:id', authToken, CommentController.editComment);
 
-//ADD LIKE 
+//ADD LIKE
 router.post('/like/:id', authToken, LikeController.addLike);
 
 //FOLLOW
