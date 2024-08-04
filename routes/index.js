@@ -7,7 +7,7 @@ const authToken = require('../middleware/auth');
 const CommentController = require('../controllers/comment-controller');
 const LikeController = require('../controllers/like-controller');
 const FollowController = require('../controllers/follow-conroller');
-const upload = require('../middleware/multer');
+const { upload, uploadAndConvert } = require('../middleware/multer');
 const ConversationController = require('../controllers/conversation-controller');
 const MessageController = require('../controllers/message-controller');
 const FavoritePostController = require('../controllers/favoritePost-controller');
@@ -36,9 +36,16 @@ router.post(
   '/users-photo',
   authToken,
   upload.array('files'),
+  uploadAndConvert,
   PhotoController.addPhotos
 );
-router.get('/users-photo/:username', authToken, PhotoController.getPhotosByUsername);
+router.get(
+  '/users-photos/:username',
+  authToken,
+  PhotoController.getPhotosByUsername
+);
+router.get('/users-photo/:photoId', authToken, PhotoController.getPhotosById);
+router.delete('/delete-photos', authToken, PhotoController.deletePhotos);
 
 //POST
 router.get('/posts', authToken, PostController.getPosts);
@@ -137,9 +144,10 @@ router.put(
 router.post(
   '/upload',
   upload.single('file'),
+  uploadAndConvert,
 
   async function (req, res, next) {
-    console.log(req.file);
+    console.log('req.file', req.file);
 
     if (req.file && req.file.size > 3 * 1024 * 1024) {
       return res.send({ message: 'File image cannot be larger than 3mb.' });
