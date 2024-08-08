@@ -20,13 +20,10 @@ const PhotoController = {
       });
       res.status(201).json(newPhotos);
     } catch (error) {
-      console.error(`create  photos error ${error} `);
-      return res
-        .status(500)
-        .json({ error: `Internal database error ${error}` });
+      next(error);
     }
   },
-  getPhotosByUsername: async (req, res) => {
+  getPhotosByUsername: async (req, res, next) => {
     const userId = req.user.userId;
     const { username } = req.params;
     const { page } = req.query;
@@ -58,12 +55,10 @@ const PhotoController = {
         ...photo,
         likedByUser: photo.likes.some((like) => like.userId === userId),
       }));
+
       res.status(201).json(postsWithLike);
     } catch (error) {
-      console.error(`get photos by username error ${error} `);
-      return res
-        .status(500)
-        .json({ error: `Internal database error ${error}` });
+      next(error);
     }
   },
 
@@ -75,6 +70,14 @@ const PhotoController = {
       return res.status(404).json({ message: 'photoId not found' });
     }
     try {
+      const isViewExist = await prisma.view.findFirst({
+        where: { userId, photoId },
+      });
+      if (!isViewExist) {
+        await prisma.view.create({
+          data: { photoId, userId },
+        });
+      }
       const photos = await prisma.photo.findUnique({
         where: { id: photoId },
 
@@ -86,14 +89,11 @@ const PhotoController = {
         },
       });
 
-      const isLikeUsers = photos.likes.some(like => like.userId === userId)
-      
-      res.status(201).json({...photos , likedByUser: isLikeUsers });
+      const isLikeUsers = photos.likes.some((like) => like.userId === userId);
+
+      res.status(201).json({ ...photos, likedByUser: isLikeUsers });
     } catch (error) {
-      console.error(`get photos by ID error ${error} `);
-      return res
-        .status(500)
-        .json({ error: `Internal database error ${error}` });
+      next(error);
     }
   },
   deletePhotos: async (req, res) => {
@@ -108,8 +108,7 @@ const PhotoController = {
       });
       res.status(200).json(result);
     } catch (error) {
-      console.error(`delete photos  error ${error} `);
-      return res.status(500).json({ error: `Internal database error ` });
+      next(error);
     }
   },
 };

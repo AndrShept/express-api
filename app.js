@@ -7,6 +7,8 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const { userOffline } = require('./bin/utils');
+const routes = require('./routes');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,7 +20,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
-app.use('/api', require('./routes'));
+app.use('/api', routes);
+routes.use(errorHandler)
 
 const io = new Server(server, {
   cors: {

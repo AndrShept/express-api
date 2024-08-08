@@ -122,8 +122,7 @@ const UserController = {
       const user = await prisma.user.findUnique({
         where: { username },
         include: {
-          // followers: true,
-          // following: true,
+
           _count: {
             select: {
               comments: true,
@@ -237,10 +236,7 @@ const UserController = {
       return res.status(404).json({ message: 'body not found!' });
     }
 
-    // let filePath;
-    // if (req.file && req.file.path) {
-    //   filePath = req.file.path;
-    // }
+
     if (id !== req.user.userId) {
       return res.status(403).json({ message: 'no access' });
     }
