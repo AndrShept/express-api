@@ -4,6 +4,28 @@ const sharp = require('sharp');
 const imagesPathname = path.join(__dirname, '../uploads/images');
 const videoPathname = path.join(__dirname, '../uploads/video');
 const fs = require('fs').promises;
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const multerS3 = require('multer-s3');
+
+const s3 = new S3Client({
+  region: process.env.AWS_BUCKET_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+const storageS3 = multerS3({
+  s3: s3,
+  bucket: process.env.AWS_BUCKET_NAME,
+
+  metadata: (req, file, cb) => {
+    cb(null, { fieldName: file.fieldname });
+  },
+  key: (req, file, cb) => {
+    cb(null, Date.now().toString() + '-' + file.originalname);
+  },
+});
 
 const storage = multer.memoryStorage({
   destination: function (req, file, cb) {
@@ -25,6 +47,7 @@ const saveAsWebP = async (buffer, originalname) => {
 
   await sharp(buffer).webp({ quality: 80 }).toFile(webpFilePath);
   const stats = await fs.stat(webpFilePath);
+
   return {
     filename: webpFilename,
     path: webpFilePath,
@@ -35,7 +58,7 @@ const saveAsWebP = async (buffer, originalname) => {
 const uploadAndConvert = async (req, res, next) => {
   try {
     if (req.file) {
-      const { filename, path,    size, } = await saveAsWebP(
+      const { filename, path, size } = await saveAsWebP(
         req.file.buffer,
         req.file.originalname
       );
@@ -49,7 +72,7 @@ const uploadAndConvert = async (req, res, next) => {
     } else if (req.files) {
       const convertedFiles = await Promise.all(
         req.files.map(async (file) => {
-          const { filename, path ,    size,} = await saveAsWebP(
+          const { filename, path, size } = await saveAsWebP(
             file.buffer,
             file.originalname
           );
@@ -73,6 +96,6 @@ const uploadAndConvert = async (req, res, next) => {
   }
 };
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage: storageS3 });
 
 module.exports = { upload, uploadAndConvert };

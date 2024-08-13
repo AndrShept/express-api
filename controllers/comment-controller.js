@@ -3,13 +3,17 @@ const { prisma } = require('../prisma/prisma');
 const CommentController = {
   getComments: async (req, res) => {
     const userId = req.user.userId;
-    const { postId } = req.params;
-    if (!postId) {
-      return res.status(404).json({ message: 'post ID not found' });
+    const { id } = req.params;
+    if (!id) {
+      return res.status(404).json({ message: 'ID not found' });
     }
+
     try {
+      const isPost = await prisma.post.findUnique({
+        where: { id },
+      });
       const comments = await prisma.comment.findMany({
-        where: { postId },
+        where: isPost ? { postId: id } : { photoId: id },
         include: {
           likes: true,
           author: true,
@@ -29,19 +33,15 @@ const CommentController = {
   },
 
   addComment: async (req, res) => {
-    const { content, postId } = req.body;
-    console.log('req. req.', req.body);
-
+    body = req.body;
     const userId = req.user.userId;
-    if (!content) {
-      return res.status(404).json({ message: 'Content required field' });
-    }
-    if (!postId) {
-      return res.status(404).json({ message: 'Post ID not found' });
+
+    if (!body) {
+      return res.status(404).json({ message: 'Body not found' });
     }
     try {
       const newComment = await prisma.comment.create({
-        data: { postId, content, authorId: userId },
+        data: { ...body, authorId: userId },
       });
       res.status(201).json(newComment);
     } catch (error) {

@@ -3,7 +3,7 @@ const { prisma } = require('../prisma/prisma');
 const ReplyController = {
   addReply: async (req, res) => {
     const userId = req.user.userId;
-    const { content, commentId, postId } = req.body;
+    const { content, commentId, id } = req.body;
     if (!commentId) {
       return res.status(404).json({ message: 'commentId not found' });
     }
@@ -18,7 +18,7 @@ const ReplyController = {
           replyId: commentId,
           authorId: userId,
           content,
-          parentId: postId
+          parentId: id
          
         },
       });

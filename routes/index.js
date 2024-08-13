@@ -49,6 +49,7 @@ router.delete('/delete-photos', authToken, PhotoController.deletePhotos);
 
 //POST
 router.get('/posts', authToken, PostController.getPosts);
+router.get('/posts-user/:username', authToken, PostController.getAllUserPosts);
 router.get('/favorite-posts', authToken, PostController.getFavoritePosts);
 router.get('/posts/:id', authToken, PostController.getPostById);
 router.post('/posts', authToken, PostController.addPost);
@@ -57,7 +58,7 @@ router.put('/posts/:id', authToken, PostController.editPost);
 
 //COMMENT
 router.post('/comments', authToken, CommentController.addComment);
-router.get('/comments/:postId', authToken, CommentController.getComments);
+router.get('/comments/:id', authToken, CommentController.getComments);
 router.delete('/comments/:id', authToken, CommentController.deleteComment);
 router.put('/comments/:id', authToken, CommentController.editComment);
 //Reply
@@ -144,18 +145,16 @@ router.put(
 router.post(
   '/upload',
   upload.single('file'),
-  uploadAndConvert,
+  // uploadAndConvert,
 
   async function (req, res, next) {
-    console.log('req.file', req.file);
+    console.log('req.file!!!!!!!!!!!!!!!!!!!!!', req.file);
 
     if (req.file && req.file.size > 3 * 1024 * 1024) {
-      return res.send({ message: 'File image cannot be larger than 3mb.' });
+      return res.status(400).send({ message: 'File image cannot be larger than 3mb.' });
     }
 
-    res.send({
-      imageUrl: `/uploads/images/${req.file.filename}`,
-    });
+    res.status(200).json({ message: 'OK' });
   }
 );
 

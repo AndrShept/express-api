@@ -28,6 +28,35 @@ const PostController = {
         .json({ error: `Internal database error ${error}` });
     }
   },
+  getAllUserPosts: async (req, res) => {
+    const userId = req.user.userId;
+    const { username } = req.params;
+    try {
+      const posts = await prisma.post.findMany({
+        where: { author: { username } },
+        include: {
+          author: true,
+          favoritePost: true,
+          likes: { include: { user: true } },
+          _count: { select: { comments: true, view: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      const postsWithLikeWithFavorite = posts.map((post) => ({
+        ...post,
+        likedByUser: post.likes.some((like) => like.userId === userId),
+        isFavoritePost: post.favoritePost.some(
+          (post) => post.userId === userId
+        ),
+      }));
+      res.status(200).json(postsWithLikeWithFavorite);
+    } catch (error) {
+      console.error(`Get posts users error ${error} `);
+      return res
+        .status(500)
+        .json({ error: `Internal database error ${error}` });
+    }
+  },
   getFavoritePosts: async (req, res) => {
     const userId = req.user.userId;
     try {
@@ -44,8 +73,6 @@ const PostController = {
               _count: { select: { comments: true, view: true } },
             },
           },
-
-
         },
         orderBy: { createdAt: 'desc' },
       });
