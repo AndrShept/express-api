@@ -52,7 +52,7 @@ model Photo {
   size Int
   name String
 
-  user   User?   @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id],onDelete: Cascade)
   userId String? @db.ObjectId
 
   likes        Like[]

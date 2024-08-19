@@ -1,18 +1,17 @@
+const { s3 } = require('../middleware/multer');
 const { prisma } = require('../prisma/prisma');
+const { DeleteObjectsCommand } = require('@aws-sdk/client-s3');
 
 const PhotoController = {
-  addPhotos: async (req, res) => {
+  addPhotos: async (req, res, next) => {
     const userId = req.user.userId;
     const files = req.files;
-
-    // if (req.file && req.file.size > 3 * 1024 * 1024) {
-    //   return res.send({ message: 'File image cannot be larger than 3mb.' });
-    // }
+    console.log('files', files);
 
     try {
       const newPhotos = await prisma.photo.createMany({
         data: files.map((file) => ({
-          url: `/uploads/images/${file.filename}`,
+          url: file.location,
           userId,
           name: file.originalname,
           size: file.size,
@@ -51,18 +50,20 @@ const PhotoController = {
         orderBy: { id: 'desc' },
       });
 
-      const postsWithLike = photos.map((photo) => ({
+      const photoWithLike = photos.map((photo) => ({
         ...photo,
         likedByUser: photo.likes.some((like) => like.userId === userId),
       }));
 
-      res.status(201).json(postsWithLike);
+    
+
+      res.status(201).json(photoWithLike);
     } catch (error) {
       next(error);
     }
   },
 
-  getPhotosById: async (req, res) => {
+  getPhotosById: async (req, res, next) => {
     const userId = req.user.userId;
     const { photoId } = req.params;
 
@@ -96,13 +97,34 @@ const PhotoController = {
       next(error);
     }
   },
-  deletePhotos: async (req, res) => {
+  deletePhotos: async (req, res, next) => {
     const userId = req.user.userId;
-    const body = req.body;
-
-    const photoIdArray = body.map((photo) => photo.id);
-
+    const photos = req.body;
+    const photoIdArray = photos.map((photo) => photo.id);
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Delete: {
+        Objects: photos.map((photo) => ({ Key: photo.url.split('/').pop() })),
+        Quiet: false,
+      },
+    };
     try {
+      const command = new DeleteObjectsCommand(params);
+      await s3.send(command);
+      const findPhotos = await prisma.photo.findMany({
+        where: { id: { in: photoIdArray } },
+      });
+      for (const photo of findPhotos) {
+        if (photo.userId !== userId) {
+          return res.status(403).json({ message: 'No access' });
+        }
+      }
+      await prisma.comment.deleteMany({
+        where: { parentId: { in: photoIdArray } },
+      });
+      await prisma.comment.deleteMany({
+        where: { photoId: { in: photoIdArray } },
+      });
       const result = await prisma.photo.deleteMany({
         where: { id: { in: photoIdArray } },
       });

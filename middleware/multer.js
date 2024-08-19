@@ -1,11 +1,7 @@
 const multer = require('multer');
-const path = require('path');
 const sharp = require('sharp');
-const imagesPathname = path.join(__dirname, '../uploads/images');
-const videoPathname = path.join(__dirname, '../uploads/video');
-const fs = require('fs').promises;
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const multerS3 = require('multer-s3');
+const { v4: uuidv4 } = require('uuid');
 
 const s3 = new S3Client({
   region: process.env.AWS_BUCKET_REGION,
@@ -15,87 +11,99 @@ const s3 = new S3Client({
   },
 });
 
-const storageS3 = multerS3({
-  s3: s3,
-  bucket: process.env.AWS_BUCKET_NAME,
+const storage = multer.memoryStorage();
 
-  metadata: (req, file, cb) => {
-    cb(null, { fieldName: file.fieldname });
-  },
-  key: (req, file, cb) => {
-    cb(null, Date.now().toString() + '-' + file.originalname);
-  },
-});
-
-const storage = multer.memoryStorage({
-  destination: function (req, file, cb) {
-    if (file.fieldname === 'file') cb(null, imagesPathname); // Каталог, куди будуть зберігатися файли
-    if (file.fieldname === 'files') cb(null, imagesPathname); // Каталог, куди будуть зберігатися файли
-    if (file.fieldname === 'video') cb(null, videoPathname); // Каталог, куди будуть зберігатися файли
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname); // Генерація унікального імені для файлу
-  },
-});
-
-const saveAsWebP = async (buffer, originalname) => {
-  const webpFilename =
-    Date.now() +
-    '-' +
-    originalname.replace(path.extname(originalname), '.webp');
-  const webpFilePath = path.join(imagesPathname, webpFilename);
-
-  await sharp(buffer).webp({ quality: 80 }).toFile(webpFilePath);
-  const stats = await fs.stat(webpFilePath);
-
-  return {
-    filename: webpFilename,
-    path: webpFilePath,
-    size: stats.size,
-  };
-};
-
-const uploadAndConvert = async (req, res, next) => {
+const uploadAndOptimize = async (req, res, next) => {
   try {
     if (req.file) {
-      const { filename, path, size } = await saveAsWebP(
-        req.file.buffer,
-        req.file.originalname
-      );
-      req.file = {
-        ...req.file,
-        filename,
-        path,
-        size,
-      };
+      if (req.file.size > 10 * 1024 * 1024) {
+        return res.send('File  cannot be larger than 10mb');
+      }
+  
+      if (req.file.mimetype.startsWith('image/')) {
+        const optimizedBuffer = await sharp(req.file.buffer)
+          .rotate()
+          .resize(1024, 1024, {
+            fit: sharp.fit.inside,
+            withoutEnlargement: true,
+          })
+          .toFormat('jpeg', { quality: 80 })
+          .toBuffer();
+
+        const key = `${uuidv4()}.jpeg`;
+
+       
+        const command = new PutObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: key,
+          Body: optimizedBuffer,
+          ContentType: 'image/jpeg',
+          Metadata: { fieldName: req.file.fieldname },
+        });
+
+        await s3.send(command);
+
+        req.file.location = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_BUCKET_REGION}.amazonaws.com/${key}`;
+        req.file.s3Key = key;
+        req.file.optimized = true;
+      }
+
       next();
     } else if (req.files) {
-      const convertedFiles = await Promise.all(
+      for (const file of req.files) {
+        if (file.size > 10 * 1024 * 1024) {
+          return res.json({ message: 'File  cannot be larger than 10mb' });
+        }
+      }
+      const optimizedFiles = await Promise.all(
         req.files.map(async (file) => {
-          const { filename, path, size } = await saveAsWebP(
-            file.buffer,
-            file.originalname
-          );
-          return {
-            ...file,
-            filename,
-            path,
-            size,
-          };
+          if (file.mimetype.startsWith('image/')) {
+            const optimizedBuffer = await sharp(file.buffer)
+              .rotate()
+              .resize(1024, 1024, {
+                fit: sharp.fit.inside,
+                withoutEnlargement: true,
+              })
+              .toFormat('jpeg', { quality: 80 })
+              .toBuffer();
+
+            const key = `${uuidv4()}.jpeg`;
+
+           
+            const command = new PutObjectCommand({
+              Bucket: process.env.AWS_BUCKET_NAME,
+              Key: key,
+              Body: optimizedBuffer,
+              ContentType: 'image/jpeg',
+              Metadata: { fieldName: file.fieldname },
+            });
+
+            await s3.send(command);
+
+            return {
+              ...file,
+              location: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_BUCKET_REGION}.amazonaws.com/${key}`,
+              s3Key: key,
+              optimized: true,
+            };
+          }
+
+          return file;
         })
       );
 
-      req.files = convertedFiles;
+      req.files = optimizedFiles;
       next();
     } else {
       next();
     }
   } catch (error) {
-    console.error(`Error converting files: ${error}`);
-    res.status(500).json({ error: 'Error converting files to WebP' });
+    console.error(`Error processing files: ${error}`);
+    res.status(500).json({ error: 'Error processing files' });
   }
 };
 
-const upload = multer({ storage: storageS3 });
 
-module.exports = { upload, uploadAndConvert };
+const upload = multer({ storage: storage });
+
+module.exports = { upload, uploadAndOptimize, s3 };

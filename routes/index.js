@@ -1,13 +1,12 @@
 const express = require('express');
 const router = express.Router();
-
+const { upload, uploadAndOptimize } = require('../middleware/multer');
 const UserController = require('../controllers/user-controller');
 const PostController = require('../controllers/post-controller');
 const authToken = require('../middleware/auth');
 const CommentController = require('../controllers/comment-controller');
 const LikeController = require('../controllers/like-controller');
 const FollowController = require('../controllers/follow-conroller');
-const { upload, uploadAndConvert } = require('../middleware/multer');
 const ConversationController = require('../controllers/conversation-controller');
 const MessageController = require('../controllers/message-controller');
 const FavoritePostController = require('../controllers/favoritePost-controller');
@@ -26,7 +25,13 @@ router.get(
   authToken,
   UserController.getUserByUsername
 );
-router.put('/users/:id', authToken, UserController.updateUser);
+router.put(
+  '/users/:id',
+  authToken,
+  upload.single('file'),
+  uploadAndOptimize,
+  UserController.updateUser
+);
 router.put('/users-online', authToken, UserController.userOnline);
 router.put('/users-offline/:userId', UserController.userOffline);
 
@@ -36,7 +41,8 @@ router.post(
   '/users-photo',
   authToken,
   upload.array('files'),
-  uploadAndConvert,
+  uploadAndOptimize,
+
   PhotoController.addPhotos
 );
 router.get(
@@ -52,7 +58,13 @@ router.get('/posts', authToken, PostController.getPosts);
 router.get('/posts-user/:username', authToken, PostController.getAllUserPosts);
 router.get('/favorite-posts', authToken, PostController.getFavoritePosts);
 router.get('/posts/:id', authToken, PostController.getPostById);
-router.post('/posts', authToken, PostController.addPost);
+router.post(
+  '/posts',
+  authToken,
+  upload.single('file'),
+  uploadAndOptimize,
+  PostController.addPost
+);
 router.delete('/posts/:id', authToken, PostController.deletePost);
 router.put('/posts/:id', authToken, PostController.editPost);
 
@@ -105,7 +117,13 @@ router.put(
 );
 
 //MESSAGES
-router.post('/messages', authToken, MessageController.addMessage);
+router.post(
+  '/messages',
+  authToken,
+  upload.single('file'),
+  uploadAndOptimize,
+  MessageController.addMessage
+);
 router.put('/messages/:messageId', authToken, MessageController.editMessage);
 router.put(
   '/messages-isRead/:messageId',
@@ -139,23 +157,6 @@ router.put(
   `/notifications/:notificationId`,
   authToken,
   NotificationController.updateNotification
-);
-
-//UPLOAD
-router.post(
-  '/upload',
-  upload.single('file'),
-  // uploadAndConvert,
-
-  async function (req, res, next) {
-    console.log('req.file!!!!!!!!!!!!!!!!!!!!!', req.file);
-
-    if (req.file && req.file.size > 3 * 1024 * 1024) {
-      return res.status(400).send({ message: 'File image cannot be larger than 3mb.' });
-    }
-
-    res.status(200).json({ message: 'OK' });
-  }
 );
 
 module.exports = router;

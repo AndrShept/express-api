@@ -1,4 +1,6 @@
+const { s3 } = require('../middleware/multer');
 const { prisma } = require('../prisma/prisma');
+const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 const PostController = {
   getPosts: async (req, res) => {
@@ -137,8 +139,9 @@ const PostController = {
   },
 
   addPost: async (req, res) => {
-    const { content, imageUrl } = req.body;
+    const content = req.body.content;
     const authorId = req.user.userId;
+    const file = req?.file;
     if (!content) {
       return res.status(404).json({ message: 'Content required field' });
     }
@@ -147,10 +150,9 @@ const PostController = {
       const userFollowers = await prisma.follows.findMany({
         where: { followingId: authorId },
       });
-      console.log('userFollowers', userFollowers);
 
       const newPost = await prisma.post.create({
-        data: { content, authorId, imageUrl: imageUrl ? `${imageUrl}` : '' },
+        data: { content, authorId, imageUrl: file?.location },
         include: { author: true },
       });
 
@@ -217,17 +219,28 @@ const PostController = {
     if (!id) {
       return res.status(404).json({ message: 'Post ID not found' });
     }
-    try {
-      const post = await prisma.post.findUnique({
-        where: { id },
-      });
-      if (!post) {
-        return res.status(404).json({ message: 'Post not found' });
-      }
-      if (authorId !== post.authorId) {
-        return res.status(403).json({ message: 'not access' });
-      }
 
+    const post = await prisma.post.findUnique({
+      where: { id },
+    });
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+    if (authorId !== post.authorId) {
+      return res.status(403).json({ message: 'not access' });
+    }
+
+    if (post.imageUrl) {
+      const key = post.imageUrl.split('/').pop();
+      const deleteParams = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: key,
+      };
+      const command = new DeleteObjectCommand(deleteParams);
+      await s3.send(command);
+    }
+
+    try {
       await prisma.post.delete({
         where: { id },
       });

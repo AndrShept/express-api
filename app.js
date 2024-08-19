@@ -9,6 +9,7 @@ const { Server } = require('socket.io');
 const { userOffline } = require('./bin/utils');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
+const helmet = require('helmet');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,11 +18,12 @@ const PORT = process.env.PORT || '3000';
 app.use(cors());
 app.use(logger('dev'));
 app.use(express.json());
+app.use(helmet());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
 app.use('/api', routes);
-routes.use(errorHandler)
+routes.use(errorHandler);
 
 const io = new Server(server, {
   cors: {
@@ -31,7 +33,6 @@ const io = new Server(server, {
 });
 
 io.on('connection', async (socket) => {
-
   const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username;
   console.log(`A user connected ${username}`);

@@ -122,7 +122,6 @@ const UserController = {
       const user = await prisma.user.findUnique({
         where: { username },
         include: {
-
           _count: {
             select: {
               comments: true,
@@ -131,7 +130,23 @@ const UserController = {
               posts: true,
               likes: true,
               message: true,
-              photos: true
+              photos: true,
+            },
+          },
+          photos: {
+            take: 3,
+            orderBy: {
+              createdAt: 'desc',
+            },
+            include: {
+              likes: true,
+              _count: {
+                select: {
+                  likes: true,
+                  view: true,
+                  comments: true,
+                },
+              },
             },
           },
         },
@@ -149,9 +164,16 @@ const UserController = {
           ],
         },
       });
-      return res
-        .status(200)
-        .json({ ...user, isFollowing: Boolean(isFollowing) });
+
+      const userWithFollowingAndLikedByUser = {
+        ...user,
+        isFollowing: Boolean(isFollowing),
+        photos: user.photos.map((photo) => ({
+          ...photo,
+          likedByUser: photo.likes.some((like) => like.userId === userId),
+        })),
+      };
+      return res.status(200).json(userWithFollowingAndLikedByUser);
     } catch (error) {
       console.error(`User by ID error ${error} `);
       return res
@@ -232,17 +254,20 @@ const UserController = {
   updateUser: async (req, res) => {
     const { id } = req.params;
     const body = req.body;
+    const profileData = JSON.parse(body.profileData);
+    const file = req.file;
     if (!body) {
       return res.status(404).json({ message: 'body not found!' });
     }
-
+    console.log('profileData', profileData);
+    console.log('file', file);
 
     if (id !== req.user.userId) {
       return res.status(403).json({ message: 'no access' });
     }
-    if (body.email) {
+    if (profileData.email) {
       const existingEmail = await prisma.user.findUnique({
-        where: { email: body.email },
+        where: { email: profileData.email },
       });
       if (existingEmail) {
         return res
@@ -250,9 +275,9 @@ const UserController = {
           .json({ message: 'Such an email already exists, but another one' });
       }
     }
-    if (body.username) {
+    if (profileData.username) {
       const existingUsername = await prisma.user.findUnique({
-        where: { username: body.username },
+        where: { username: profileData.username },
       });
       if (existingUsername) {
         return res.status(400).json({
@@ -263,7 +288,7 @@ const UserController = {
 
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { ...body },
+      data: { ...profileData, avatarUrl: file?.location },
     });
     res.status(201).json(updatedUser);
     try {

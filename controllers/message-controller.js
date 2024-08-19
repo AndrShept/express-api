@@ -1,8 +1,12 @@
 const { prisma } = require('../prisma/prisma');
-
+const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { s3 } = require('../middleware/multer');
 const MessageController = {
   addMessage: async (req, res) => {
-    const { content, conversationId, authorId, imageUrl } = req.body;
+    const body = req.body;
+    const file = req?.file;
+    const messageData = JSON.parse(body.messageData);
+    const { conversationId, authorId, content } = messageData;
     const userId = req.user.userId;
 
     if (!conversationId) {
@@ -17,7 +21,7 @@ const MessageController = {
           content,
           conversationId,
           authorId,
-          imageUrl,
+          imageUrl: file?.location,
         },
         include: { author: true, conversation: true },
       });
@@ -84,16 +88,27 @@ const MessageController = {
     if (!messageId) {
       return res.status(404).json({ message: 'messageId not found ' });
     }
-
-    const deletedMessage = await prisma.message.delete({
-      where: { id: messageId },
-      include: { conversation: true },
-    });
-    res.status(200).json({ ...deletedMessage, type: 'delete' });
-
     try {
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+      });
+      if (message.imageUrl) {
+        const key = message.imageUrl.split('/').pop();
+        const deleteParams = {
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: key,
+        };
+        const command = new DeleteObjectCommand(deleteParams);
+        await s3.send(command);
+      }
+
+      const deletedMessage = await prisma.message.delete({
+        where: { id: messageId },
+        include: { conversation: true },
+      });
+      res.status(200).json({ ...deletedMessage, type: 'delete' });
     } catch (error) {
-      console.error(`Update message error ${error} `);
+      console.error(`Delete message error ${error} `);
       return res
         .status(500)
         .json({ error: `Internal database error ${error}` });
