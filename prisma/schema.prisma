@@ -13,6 +13,7 @@ enum NotificationType {
   comment
   post
   follower
+  photo
 }
 
 model User {
@@ -52,7 +53,7 @@ model Photo {
   size Int
   name String
 
-  user   User?   @relation(fields: [userId], references: [id],onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String? @db.ObjectId
 
   likes        Like[]
@@ -151,6 +152,7 @@ model Post {
   id           String         @id @default(auto()) @map("_id") @db.ObjectId
   content      String
   imageUrl     String?
+  videoUrl     String?
   author       User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId     String         @db.ObjectId
   likes        Like[]

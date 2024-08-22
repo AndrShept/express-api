@@ -142,6 +142,10 @@ const PostController = {
     const content = req.body.content;
     const authorId = req.user.userId;
     const file = req?.file;
+    const fileUrl = file?.mimetype.startsWith('image/')
+      ? { imageUrl: file?.location }
+      : { videoUrl: file?.location };
+
     if (!content) {
       return res.status(404).json({ message: 'Content required field' });
     }
@@ -152,7 +156,7 @@ const PostController = {
       });
 
       const newPost = await prisma.post.create({
-        data: { content, authorId, imageUrl: file?.location },
+        data: { content, authorId, ...fileUrl },
         include: { author: true },
       });
 

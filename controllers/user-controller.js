@@ -95,6 +95,7 @@ const UserController = {
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
+      delete user.password;
       const isFollowing = await prisma.follows.findFirst({
         where: {
           AND: [
@@ -154,6 +155,9 @@ const UserController = {
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
+      if (user) {
+        delete user.password;
+      }
       const isFollowing = await prisma.follows.findFirst({
         where: {
           AND: [
@@ -211,8 +215,9 @@ const UserController = {
 
       return res.status(200).json(
         users.map((user) => {
+          const { password, ...userWithoutPassword } = user;
           return {
-            ...user,
+            ...userWithoutPassword,
             isFollowing: user.followers.some(
               (follower) => follower.followerId === userId
             ),
