@@ -6,7 +6,8 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { Resend } = require('resend');
-const { html, onHtml } = require('../bin/utils');
+const { onHtml } = require('../bin/utils');
+const nodemailer = require('nodemailer');
 
 const UserController = {
   register: async (req, res) => {
@@ -356,6 +357,18 @@ const UserController = {
   },
   resetPassword: async (req, res, next) => {
     const { email } = req.body;
+
+    // Налаштування транспорту для SMTP
+    // const transporter = nodemailer.createTransport({
+    //   service: 'gmail', // або ваш SMTP сервер, наприклад, 'smtp.example.com'
+    //   auth: {
+    //     user: process.env.EMAIL_USER, // ваш email
+    //     pass: process.env.EMAIL_PASS, // ваш пароль
+    //   },
+    // });
+
+    // Налаштування інформації про лист
+
     const resend = new Resend(process.env.RESEND_KEY);
     if (!email) {
       return res.status(404).json({ error: 'email not found' });
@@ -376,6 +389,25 @@ const UserController = {
         expiresIn: '1h',
       });
       const url = `${process.env.BASE_URL}/login/new-password?token=${token}`;
+
+      // const mailOptions = {
+      //   from: 'lolokos1986@gmail.com', // ваш email
+      //   to: email, // email одержувача
+      //   subject: 'Rest Password SOCIAL MEDIA', // тема листа
+      //   text: 'This is a test email sent using Nodemailer!', // текстовий контент
+      //   html: onHtml(url), // HTML контент
+      // };
+
+      // Відправка листа
+      // transporter.sendMail(mailOptions, (error, info) => {
+      //   if (error) {
+      //     console.log('Error occurred:', error);
+      //   } else {
+      //     console.log('Email sent:', info.response);
+      //     return res.status(200).json({ success: true, data: info.response });
+      //   }
+      // });
+
       const { data, error } = await resend.emails.send({
         from: 'Acme <onboarding@resend.dev>',
         to: [email],
