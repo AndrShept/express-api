@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const { Resend } = require('resend');
+const { html, onHtml } = require('../bin/utils');
 
 const UserController = {
   register: async (req, res) => {
@@ -350,6 +352,71 @@ const UserController = {
       return res
         .status(500)
         .json({ error: `Internal database error ${error}` });
+    }
+  },
+  resetPassword: async (req, res, next) => {
+    const { email } = req.body;
+    const resend = new Resend(process.env.RESEND_KEY);
+    if (!email) {
+      return res.status(404).json({ error: 'email not found' });
+    }
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: {
+          email,
+        },
+      });
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: 'Email not found ' });
+      }
+      const token = jwt.sign({ userId: user.id }, process.env.SECRET_KEY, {
+        expiresIn: '1h',
+      });
+      const url = `${process.env.BASE_URL}/login/new-password?token=${token}`;
+      const { data, error } = await resend.emails.send({
+        from: 'Acme <onboarding@resend.dev>',
+        to: [email],
+        subject: 'Reset your password SOCIAL MEDIA',
+        html: onHtml(url),
+      });
+      if (data && user) {
+        return res.status(200).json({ success: true, data });
+      } else {
+        console.error(error);
+      }
+    } catch (error) {
+      next(error);
+    }
+  },
+  updatePassword: async (req, res, next) => {
+    const { newPassword, token } = req.body;
+
+    if (!newPassword) {
+      return res.status(404).json({ error: 'new password not found' });
+    }
+    if (!token) {
+      return res.status(404).json({ error: 'token not found' });
+    }
+
+    try {
+      const valid = jwt.verify(token, process.env.SECRET_KEY);
+      if (!valid) {
+        return res
+          .status(403)
+          .json({ success: false, message: 'Invalid token' });
+      }
+      const userId = valid.userId;
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+      res.status(200).json({ success: true });
+    } catch (error) {
+      next(error);
     }
   },
 };

@@ -16,6 +16,8 @@ const PhotoController = require('../controllers/photo-controller');
 
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
+router.post('/reset-password', UserController.resetPassword);
+router.put('/update-password', UserController.updatePassword);
 router.get('/current', authToken, UserController.current);
 router.get('/users/:searchValue?', authToken, UserController.getAllUsers);
 router.get('/users-following', authToken, UserController.getAllFollowingUsers);
