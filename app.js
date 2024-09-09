@@ -32,6 +32,7 @@ const io = new Server(server, {
   },
 });
 
+
 io.on('connection', async (socket) => {
   const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username;
@@ -46,9 +47,13 @@ io.on('connection', async (socket) => {
     }
   });
 
-  socket.on('disconnect', async () => {
+
+  socket.on('disconnect', () => {
     console.log(`User disconnected ${username}`);
-    // await userOffline(userId);
+
+    if (userId) {
+      userOffline(userId);
+    }
   });
 });
 

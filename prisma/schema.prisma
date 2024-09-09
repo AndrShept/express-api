@@ -39,11 +39,113 @@ model User {
   notification          Notification[] @relation("author")
   notificationReceiver  Notification[] @relation("receiver")
   photos                Photo[]
+  hero                  Hero           @relation(fields: [heroId], references: [id])
+  heroId                String         @db.ObjectId
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model Hero {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  level     Int    @default(1)
+  str       Int    @default(10)
+  int       Int    @default(10)
+  const     Int    @default(10)
+  health    Int?
+  maxHealth Int?
+  mana      Int?
+  maxMana   Int?
+  exp       Int    @default(0)
+
+  weapon      Item? @relation("HeroWeapon", fields: [weaponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  shield      Item? @relation("HeroShield", fields: [shieldId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  breastplate Item? @relation("HeroBreastplate", fields: [breastplateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ring        Item? @relation("HeroRing", fields: [ringId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  amulet      Item? @relation("HeroAmulet", fields: [amuletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  belt        Item? @relation("HeroBelt", fields: [beltId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  shoes       Item? @relation("HeroShoes", fields: [shoesId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  helmet      Item? @relation("HeroHelmet", fields: [helmetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  users      User[]
+  buffs      Buff[]
+  inventorys Item[] @relation("HeroInventory")
+
+  weaponId      String? @unique @db.ObjectId
+  shieldId      String? @unique @db.ObjectId
+  breastplateId String? @unique @db.ObjectId
+  ringId        String? @unique @db.ObjectId
+  amuletId      String? @unique @db.ObjectId
+  beltId        String? @unique @db.ObjectId
+  shoesId       String? @unique @db.ObjectId
+  helmetId      String? @unique @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Item {
+  id         String      @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  type       ItemType
+  weaponType WeaponType?
+
+  isEquipped    Boolean @default(false)
+  isCanEquipped Boolean @default(true)
+
+  strBonus   Int?
+  intBonus   Int?
+  constBonus Int?
+
+  hero   Hero?   @relation("HeroInventory", fields: [heroId], references: [id], onDelete: Cascade)
+  heroId String? @db.ObjectId
+
+  heroWeapon      Hero? @relation("HeroWeapon")
+  heroShield      Hero? @relation("HeroShield")
+  heroBreastplate Hero? @relation("HeroBreastplate")
+  heroBelt        Hero? @relation("HeroBelt")
+  heroShoes       Hero? @relation("HeroShoes")
+  heroHelmet      Hero? @relation("HeroHelmet")
+  heroRing        Hero? @relation("HeroRing")
+  heroAmulet      Hero? @relation("HeroAmulet")
+
+  @@map("items")
+}
+
+enum ItemType {
+  POTION
+  BOOK
+  WEAPON
+  BREASTPLATE
+  BELT
+  SHOES
+  HELMET
+  SHIELD
+  RING
+  AMULET
+}
+
+enum WeaponType {
+  ONE_HAND
+  TWO_HAND
+}
+
+model Buff {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  str      Int?
+  int      Int?
+  const    Int?
+  duration Int
+
+  hero   Hero?   @relation(fields: [heroId], references: [id])
+  heroId String? @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Photo {

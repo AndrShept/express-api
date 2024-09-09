@@ -33,8 +33,6 @@ const PhotoController = {
     const pageNumber = Number(page);
     const pageSize = 10;
     const take = pageNumber * pageSize;
-    console.log('pageNumber', pageNumber);
-    console.log('search =', search);
     if (!username) {
       return res.status(404).json({ message: 'username not found' });
     }
@@ -54,8 +52,6 @@ const PhotoController = {
         ...photo,
         likedByUser: photo.likes.some((like) => like.userId === userId),
       }));
-
-    
 
       res.status(201).json(photoWithLike);
     } catch (error) {
