@@ -39,8 +39,7 @@ model User {
   notification          Notification[] @relation("author")
   notificationReceiver  Notification[] @relation("receiver")
   photos                Photo[]
-  hero                  Hero           @relation(fields: [heroId], references: [id])
-  heroId                String         @db.ObjectId
+  hero                  Hero?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,17 +48,23 @@ model User {
 }
 
 model Hero {
-  id        String @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  level     Int    @default(1)
-  str       Int    @default(10)
-  int       Int    @default(10)
-  const     Int    @default(10)
-  health    Int?
-  maxHealth Int?
-  mana      Int?
-  maxMana   Int?
-  exp       Int    @default(0)
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  name  String
+  level Int    @default(1)
+
+  strength     Int @default(10)
+  dexterity    Int @default(10)
+  intelligence Int @default(10)
+  constitution Int @default(10)
+  luck         Int @default(5)
+
+  health     Int?
+  maxHealth  Int?
+  mana       Int?
+  maxMana    Int?
+  experience Int  @default(0)
+
+  statPoints Int @default(10)
 
   weapon      Item? @relation("HeroWeapon", fields: [weaponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   shield      Item? @relation("HeroShield", fields: [shieldId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -70,9 +75,11 @@ model Hero {
   shoes       Item? @relation("HeroShoes", fields: [shoesId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   helmet      Item? @relation("HeroHelmet", fields: [helmetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  users      User[]
   buffs      Buff[]
   inventorys Item[] @relation("HeroInventory")
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique @db.ObjectId
 
   weaponId      String? @unique @db.ObjectId
   shieldId      String? @unique @db.ObjectId
@@ -85,6 +92,8 @@ model Hero {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("heroes")
 }
 
 model Item {
@@ -96,9 +105,7 @@ model Item {
   isEquipped    Boolean @default(false)
   isCanEquipped Boolean @default(true)
 
-  strBonus   Int?
-  intBonus   Int?
-  constBonus Int?
+  itemModifier Modifier?
 
   hero   Hero?   @relation("HeroInventory", fields: [heroId], references: [id], onDelete: Cascade)
   heroId String? @db.ObjectId
@@ -112,7 +119,55 @@ model Item {
   heroRing        Hero? @relation("HeroRing")
   heroAmulet      Hero? @relation("HeroAmulet")
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("items")
+}
+
+model Modifier {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  str   Int?
+  int   Int?
+  const Int?
+
+  armor            Int?
+  magicResistances Int?
+  evasion          Int?
+
+  spellDamage           Int?
+  spellDamageCritPower  Int?
+  spellDamageCritChance Int?
+
+  meeleDamage           Int?
+  meeleDamageCritPower  Int?
+  meeleDamageCritChance Int?
+
+  duration Int?
+
+  item   Item?   @relation(fields: [itemId], references: [id])
+  itemId String? @unique @db.ObjectId
+
+  Buff Buff[]
+
+  @@map("Modifiers")
+}
+
+model Buff {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  hero   Hero?   @relation(fields: [heroId], references: [id])
+  heroId String? @db.ObjectId
+
+  buffModifier Modifier? @relation(fields: [modifierId], references: [id])
+  modifierId   String?   @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("buffs")
 }
 
 enum ItemType {
@@ -126,26 +181,12 @@ enum ItemType {
   SHIELD
   RING
   AMULET
+  MISC
 }
 
 enum WeaponType {
   ONE_HAND
   TWO_HAND
-}
-
-model Buff {
-  id       String @id @default(auto()) @map("_id") @db.ObjectId
-  name     String
-  str      Int?
-  int      Int?
-  const    Int?
-  duration Int
-
-  hero   Hero?   @relation(fields: [heroId], references: [id])
-  heroId String? @db.ObjectId
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Photo {
