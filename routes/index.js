@@ -13,6 +13,8 @@ const FavoritePostController = require('../controllers/favoritePost-controller')
 const NotificationController = require('../controllers/notification-controller');
 const ReplyController = require('../controllers/reply-controller');
 const PhotoController = require('../controllers/photo-controller');
+const HeroController = require('../controllers/game/hero-controller');
+const ItemController = require('../controllers/game/item-controller');
 
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
@@ -160,5 +162,12 @@ router.put(
   authToken,
   NotificationController.updateNotification
 );
+//HERO
+router.get('/hero', authToken, HeroController.getMyHero);
+
+//ITEM
+router.get('/items', authToken, ItemController.getAllItems);
+router.get('/novice-items', authToken, ItemController.getNoviceItems);
+router.post('/create-items', authToken, ItemController.createItem);
 
 module.exports = router;
