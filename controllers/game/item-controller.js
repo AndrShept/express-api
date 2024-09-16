@@ -8,6 +8,7 @@ const ItemController = {
     try {
       const inventoryItems = await prisma.inventoryItem.findMany({
         where: { tag: 'ALL' },
+        include: { modifier: true },
       });
 
       res.status(200).json(inventoryItems);
@@ -22,6 +23,7 @@ const ItemController = {
     try {
       const noviceItems = await prisma.inventoryItem.findMany({
         where: { tag: 'NOVICE' },
+        include: { modifier: true },
       });
 
       res.status(200).json(noviceItems);
@@ -32,7 +34,7 @@ const ItemController = {
   createItem: async (req, res, next) => {
     const userId = req.user.userId;
     const body = req.body;
-    let { modifier, ...data } = body;
+    const { modifier, ...data } = body;
 
     try {
       const newItem = await prisma.inventoryItem.create({

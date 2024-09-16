@@ -39,7 +39,7 @@ model User {
   notification          Notification[] @relation("author")
   notificationReceiver  Notification[] @relation("receiver")
   photos                Photo[]
-  hero                  Hero?
+  hero                  Hero[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -48,48 +48,32 @@ model User {
 }
 
 model Hero {
-  id    String @id @default(auto()) @map("_id") @db.ObjectId
-  name  String
-  level Int    @default(1)
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  avatarUrl String
+  name      String @unique
+  level     Int    @default(1)
 
-  strength     Int @default(10)
-  dexterity    Int @default(10)
-  intelligence Int @default(10)
-  constitution Int @default(10)
-  luck         Int @default(5)
-
-  health    Int?
-  maxHealth Int?
-  mana      Int?
-  maxMana   Int?
+  health Int?
+  mana   Int?
 
   experience Int @default(0)
 
   statPoints Int @default(10)
 
-  weapon      InventoryItem? @relation("HeroWeapon", fields: [weaponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  shield      InventoryItem? @relation("HeroShield", fields: [shieldId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  breastplate InventoryItem? @relation("HeroBreastplate", fields: [breastplateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  ring        InventoryItem? @relation("HeroRing", fields: [ringId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  amulet      InventoryItem? @relation("HeroAmulet", fields: [amuletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  belt        InventoryItem? @relation("HeroBelt", fields: [beltId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  shoes       InventoryItem? @relation("HeroShoes", fields: [shoesId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  helmet      InventoryItem? @relation("HeroHelmet", fields: [helmetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  modifier   Modifier? @relation(fields: [modifierId], references: [id])
+  modifierId String?   @db.ObjectId
 
-  buffs      Buff[]
-  inventorys InventoryItem[] @relation("HeroInventory")
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String @unique @db.ObjectId
+  equipment   Equipment? @relation(fields: [equipmentId], references: [id])
+  equipmentId String?    @db.ObjectId
 
-  weaponId      String? @unique @db.ObjectId
-  shieldId      String? @unique @db.ObjectId
-  breastplateId String? @unique @db.ObjectId
-  ringId        String? @unique @db.ObjectId
-  amuletId      String? @unique @db.ObjectId
-  beltId        String? @unique @db.ObjectId
-  shoesId       String? @unique @db.ObjectId
-  helmetId      String? @unique @db.ObjectId
+  buffs   Buff[]   @relation(fields: [buffsId], references: [id])
+  buffsId String[] @db.ObjectId
+
+  inventorys   InventoryItem[] @relation(fields: [inventorysId], references: [id])
+  inventorysId String[]        @db.ObjectId
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -97,9 +81,25 @@ model Hero {
   @@map("heroes")
 }
 
+model Equipment {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  weapon        InventoryItem? @relation("weaponEquipment", fields: [weaponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  weaponId      String?        @db.ObjectId
+  breastplate   InventoryItem? @relation("breastplateEquipment", fields: [breastplateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  breastplateId String?        @db.ObjectId
+
+  hero Hero[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("equipments")
+}
+
 model InventoryItem {
   id         String      @id @default(auto()) @map("_id") @db.ObjectId
-  name       String      @unique
+  name       String
   type       ItemType
   weaponType WeaponType?
   tag        ItemTag
@@ -108,20 +108,14 @@ model InventoryItem {
   isEquipped    Boolean @default(false)
   isCanEquipped Boolean @default(true)
 
-  modifier   Modifier? @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  modifier   Modifier? @relation(fields: [modifierId], references: [id])
   modifierId String?   @db.ObjectId
 
-  hero   Hero?   @relation("HeroInventory", fields: [heroId], references: [id], onDelete: Cascade)
-  heroId String? @db.ObjectId
+  hero   Hero[]   @relation(fields: [heroId], references: [id])
+  heroId String[] @db.ObjectId
 
-  heroWeapon      Hero? @relation("HeroWeapon")
-  heroShield      Hero? @relation("HeroShield")
-  heroBreastplate Hero? @relation("HeroBreastplate")
-  heroBelt        Hero? @relation("HeroBelt")
-  heroShoes       Hero? @relation("HeroShoes")
-  heroHelmet      Hero? @relation("HeroHelmet")
-  heroRing        Hero? @relation("HeroRing")
-  heroAmulet      Hero? @relation("HeroAmulet")
+  weaponEquipment      Equipment[] @relation("weaponEquipment")
+  breastplateEquipment Equipment[] @relation("breastplateEquipment")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -141,6 +135,9 @@ model Modifier {
   constitution Int?
   luck         Int?
 
+  maxHealth Int?
+  maxMana   Int?
+
   armor            Int?
   magicResistances Int?
   evasion          Int?
@@ -157,6 +154,7 @@ model Modifier {
 
   buffs          Buff[]
   inventoryItems InventoryItem[]
+  hero           Hero[]
 
   @@map("modifiers")
 }
@@ -165,10 +163,10 @@ model Buff {
   id   String @id @default(auto()) @map("_id") @db.ObjectId
   name String
 
-  hero   Hero?   @relation(fields: [heroId], references: [id], onDelete: Cascade)
-  heroId String? @db.ObjectId
+  hero   Hero[]   @relation(fields: [heroId], references: [id])
+  heroId String[] @db.ObjectId
 
-  modifier   Modifier? @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  modifier   Modifier? @relation(fields: [modifierId], references: [id])
   modifierId String?   @db.ObjectId
 
   createdAt DateTime @default(now())
