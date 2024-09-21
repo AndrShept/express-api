@@ -14,18 +14,31 @@ const userOffline = async (userId) => {
   });
 };
 
-// const newMessageCount = async ({ conversationId, userId }) => {
-//   const conversation = await prisma.conversation.findUnique({
-//     where: { id: conversationId },
-//     include: { messages: { include: { author: true, conversation: true } } },
-//   });
+function sumModifiers(...modifiers) {
+  const result = {};
 
-//   const conversationsWithNewMessagesCount = conversation.messages.filter(
-//     (message) => message.isRead === false && message.authorId !== userId
-//   ).length;
+  modifiers.forEach((modifier) => {
+    for (const key in modifier) {
+      const value = modifier[key];
+      if (typeof value === 'number') {
+        result[key] = (result[key] || 0) + value;
+      } else if (result[key] === undefined) {
+        result[key] = value;
+      }
+    }
+  });
 
-//   return { conversationId, conversationsWithNewMessagesCount };
-// };
+  if (typeof result.strength === 'number') {
+    result.maxHealth = result.constitution * 10;
+    
+  }
+
+  if (typeof result.intelligence === 'number') {
+    result.maxMana = result.intelligence * 10;
+  }
+
+  return result;
+}
 
 const onHtml = (url) => {
   return `
@@ -73,4 +86,5 @@ module.exports = {
   userOnline,
   userOffline,
   onHtml,
+  sumModifiers,
 };

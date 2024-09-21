@@ -6,12 +6,12 @@ const ItemController = {
     const userId = req.user.userId;
 
     try {
-      const inventoryItems = await prisma.inventoryItem.findMany({
-        where: { tag: 'ALL' },
+      const gameItems = await prisma.gameItem.findMany({
+        // where: { tag: 'ALL' },
         include: { modifier: true },
       });
 
-      res.status(200).json(inventoryItems);
+      res.status(200).json(gameItems);
     } catch (error) {
       next(error);
     }
@@ -21,7 +21,7 @@ const ItemController = {
     const userId = req.user.userId;
 
     try {
-      const noviceItems = await prisma.inventoryItem.findMany({
+      const noviceItems = await prisma.gameItem.findMany({
         where: { tag: 'NOVICE' },
         include: { modifier: true },
       });
@@ -37,7 +37,7 @@ const ItemController = {
     const { modifier, ...data } = body;
 
     try {
-      const newItem = await prisma.inventoryItem.create({
+      const newItem = await prisma.gameItem.create({
         data: {
           ...data,
           modifier: { create: { ...modifier } },

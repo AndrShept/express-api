@@ -10,6 +10,9 @@ const { userOffline } = require('./bin/utils');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const helmet = require('helmet');
+const { prisma } = require('./prisma/prisma');
+const game = require('./bin/game');
+const getHero = require('./bin/getHero');
 
 const app = express();
 const server = http.createServer(app);
@@ -32,11 +35,15 @@ const io = new Server(server, {
   },
 });
 
-
 io.on('connection', async (socket) => {
   const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username;
   console.log(`A user connected ${username}`);
+
+  const hero = await getHero(username);
+  if (hero) {
+    game(username, socket, hero);
+  }
 
   socket.on('msg', async (msg) => {
     io.emit(msg.conversationId, msg);
@@ -47,10 +54,8 @@ io.on('connection', async (socket) => {
     }
   });
 
-
   socket.on('disconnect', () => {
     console.log(`User disconnected ${username}`);
-
     if (userId) {
       userOffline(userId);
     }
@@ -60,23 +65,5 @@ io.on('connection', async (socket) => {
 server.listen(PORT, () => {
   console.log(`Server running port:${PORT}`);
 });
-
-// папка для створення збереження файлів
-const uploadsPath = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsPath)) {
-  fs.mkdirSync(uploadsPath);
-}
-
-// Шлях до папки "images" у папці "uploads"
-const imagePath = path.join(uploadsPath, 'images');
-const videoPath = path.join(uploadsPath, 'videos');
-
-// Перевіряємо наявність папки
-if (!fs.existsSync(imagePath)) {
-  fs.mkdirSync(imagePath);
-}
-if (!fs.existsSync(videoPath)) {
-  fs.mkdirSync(videoPath);
-}
 
 module.exports = app;

@@ -165,6 +165,7 @@ router.put(
 //HERO
 router.get('/hero', authToken, HeroController.getMyHero);
 router.post('/hero', authToken, HeroController.createHero);
+router.post('/hero-equip', authToken, HeroController.equipHeroItem);
 
 //ITEM
 router.get('/items', authToken, ItemController.getAllItems);
