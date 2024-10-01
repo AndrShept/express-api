@@ -30,7 +30,6 @@ function sumModifiers(...modifiers) {
 
   if (typeof result.strength === 'number') {
     result.maxHealth = result.constitution * 10;
-    
   }
 
   if (typeof result.intelligence === 'number') {
@@ -39,6 +38,23 @@ function sumModifiers(...modifiers) {
 
   return result;
 }
+
+const getHeroId = async (userId) => {
+  const hero = await prisma.hero.findFirst({
+    where: {
+      userId,
+    },
+  });
+  return hero.id;
+};
+const getHero = async (userId) => {
+  const hero = await prisma.hero.findFirst({
+    where: {
+      userId,
+    },
+  });
+  return hero;
+};
 
 const onHtml = (url) => {
   return `
@@ -82,9 +98,41 @@ const onHtml = (url) => {
   `;
 };
 
+const equipItem = async (heroId, inventoryItemId, slot) => {
+  return prisma.$transaction([
+    prisma.equipment.create({
+      data: { heroId, inventoryItemId, slot },
+      include: { inventoryItem: true },
+    }),
+    prisma.inventoryItem.update({
+      where: { id: inventoryItemId },
+      data: { isEquipped: true },
+    }),
+  ]);
+};
+
+const unEquipExistingItem = async (heroId, slot) => {
+  const existingEquipment = await prisma.equipment.findFirst({
+    where: { heroId, slot },
+  });
+  if (existingEquipment) {
+    return prisma.$transaction([
+      prisma.equipment.delete({ where: { id: existingEquipment.id } }),
+      prisma.inventoryItem.update({
+        where: { id: existingEquipment.inventoryItemId },
+        data: { isEquipped: false },
+      }),
+    ]);
+  }
+};
+
 module.exports = {
   userOnline,
   userOffline,
   onHtml,
   sumModifiers,
+  getHeroId,
+  equipItem,
+  unEquipExistingItem,
+  getHero,
 };

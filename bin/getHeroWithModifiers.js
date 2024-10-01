@@ -1,6 +1,6 @@
 const { prisma } = require('../prisma/prisma');
 
- const getHero = async (username) => {
+ const getHeroWithModifiers = async (username) => {
   const hero = await prisma.hero.findFirst({
     where: {
       user: { username },
@@ -16,4 +16,4 @@ const { prisma } = require('../prisma/prisma');
   return hero;
 };
 
-module.exports = getHero;
+module.exports = getHeroWithModifiers;

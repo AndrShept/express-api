@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { prisma } = require('../prisma/prisma');
 
 const authToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -7,11 +8,13 @@ const authToken = (req, res, next) => {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
+  jwt.verify(token, process.env.SECRET_KEY, async (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid token' });
     }
+
     req.user = user;
+
     next();
   });
 };

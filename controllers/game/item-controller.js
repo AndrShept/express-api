@@ -2,7 +2,6 @@ const { prisma } = require('../../prisma/prisma');
 
 const ItemController = {
   getAllItems: async (req, res, next) => {
-    const { id } = req.params;
     const userId = req.user.userId;
 
     try {
@@ -17,7 +16,6 @@ const ItemController = {
     }
   },
   getNoviceItems: async (req, res, next) => {
-    const { id } = req.params;
     const userId = req.user.userId;
 
     try {
@@ -36,6 +34,7 @@ const ItemController = {
     const body = req.body;
     const { modifier, ...data } = body;
 
+
     try {
       const newItem = await prisma.gameItem.create({
         data: {
@@ -50,6 +49,7 @@ const ItemController = {
       next(error);
     }
   },
+ 
 };
 
 module.exports = ItemController;

@@ -6,13 +6,13 @@ const fs = require('fs');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
-const { userOffline } = require('./bin/utils');
+const { userOffline, userOnline } = require('./bin/utils');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const helmet = require('helmet');
 const { prisma } = require('./prisma/prisma');
 const game = require('./bin/game');
-const getHero = require('./bin/getHero');
+const getHeroWithModifiers = require('./bin/getHeroWithModifiers');
 
 const app = express();
 const server = http.createServer(app);
@@ -39,8 +39,10 @@ io.on('connection', async (socket) => {
   const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username;
   console.log(`A user connected ${username}`);
-
-  const hero = await getHero(username);
+  if (userId) {
+    userOnline(userId);
+  }
+  const hero = await getHeroWithModifiers(username);
   if (hero) {
     game(username, socket, hero);
   }
