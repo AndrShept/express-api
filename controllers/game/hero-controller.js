@@ -5,6 +5,7 @@ const {
   equipItem,
   unEquipExistingItem,
   getHero,
+  unEquipItem,
 } = require('../../bin/utils');
 const { prisma } = require('../../prisma/prisma');
 
@@ -19,8 +20,9 @@ const HeroController = {
           userId,
         },
         include: {
-          buffs: true,
+          buffs: { include: { modifier: true } },
           modifier: true,
+          baseStats: true,
           equipments: {
             include: {
               inventoryItem: {
@@ -37,7 +39,16 @@ const HeroController = {
           },
         },
       });
-      res.status(200).json(hero);
+
+      const sumHeroStats = sumModifiers(
+        {
+          ...hero.baseStats,
+          id: undefined,
+        },
+        { ...hero.modifier, id: undefined }
+      );
+
+      res.status(200).json({ ...hero, modifier: sumHeroStats });
     } catch (error) {
       next(error);
     }
@@ -224,24 +235,14 @@ const HeroController = {
       const inventoryLength = await prisma.inventoryItem.count({
         where: { isEquipped: false },
       });
-      if (inventoryLength === hero.inventorySlots) {
+      if (inventoryLength >= hero.inventorySlots) {
         return res.status(409).json({
           success: false,
           message: 'Item cannot be unequipped because inventory is full',
         });
       }
-      const [_, unEquippedItem] = await prisma.$transaction([
-        prisma.equipment.deleteMany({
-          where: {
-            inventoryItemId,
-            heroId: hero.id,
-          },
-        }),
-        prisma.inventoryItem.update({
-          where: { id: inventoryItemId },
-          data: { isEquipped: false },
-        }),
-      ]);
+
+      const unEquippedItem = await unEquipItem(hero.id, inventoryItemId);
 
       res.status(200).json({
         success: true,
@@ -258,28 +259,90 @@ const HeroController = {
     const userId = req.user.userId;
 
     const { gameItemId } = body;
-    const heroId = await getHeroId(userId);
-
     if (!gameItemId) {
       return res
         .status(400)
         .json({ success: false, message: 'gameItemId not found' });
     }
-    if (!heroId) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'heroId not found' });
-    }
 
     try {
-      const newItemInventory = await prisma.inventoryItem.create({
-        data: {
-          gameItemId,
-          heroId,
-        },
+      const hero = await getHero(userId);
+
+      if (!hero.id) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'heroId not found' });
+      }
+      const freeInvSlots = await prisma.inventoryItem.count({
+        where: { isEquipped: false, heroId: hero.id },
       });
 
-      res.status(201).json(newItemInventory);
+      if (hero.inventorySlots < freeInvSlots) {
+        return res.status(409).json({
+          success: false,
+          message: 'Item cannot be acquired because inventory is full',
+        });
+      }
+      const gameItem = await prisma.gameItem.findUnique({
+        where: { id: gameItemId },
+      });
+
+      if (gameItem.price > hero.gold) {
+        return res.status(400).json({
+          success: false,
+          message: 'Not enough gold',
+        });
+      }
+
+      const isPotionMiscType =
+        gameItem.type === 'POTION' || gameItem.type === 'MISC';
+      existInventoryItem = await prisma.inventoryItem.findFirst({
+        where: {
+          gameItemId,
+          heroId: hero.id,
+        },
+        include: { gameItem: true },
+      });
+      if (isPotionMiscType && existInventoryItem) {
+        await prisma.$transaction([
+          prisma.inventoryItem.updateMany({
+            where: {
+              heroId: hero.id,
+              gameItemId,
+            },
+            data: { quantity: { increment: 1 } },
+          }),
+          prisma.hero.update({
+            where: { id: hero.id },
+            data: { gold: { decrement: gameItem.price ? gameItem.price : 0 } },
+          }),
+        ]);
+        return res.status(201).json({
+          success: true,
+          message: 'Congratulations! You have acquired',
+          data: existInventoryItem,
+        });
+      }
+
+      const [newItemInventory, _] = await prisma.$transaction([
+        prisma.inventoryItem.create({
+          data: {
+            gameItemId,
+            heroId: hero.id,
+            isCanEquipped: !isPotionMiscType,
+          },
+          include: { gameItem: true },
+        }),
+        prisma.hero.update({
+          where: { id: hero.id },
+          data: { gold: { decrement: gameItem.price ? gameItem.price : 0 } },
+        }),
+      ]);
+      res.status(201).json({
+        success: true,
+        message: 'Congratulations! You have acquired',
+        data: newItemInventory,
+      });
     } catch (error) {
       next(error);
     }
@@ -289,11 +352,17 @@ const HeroController = {
     const userId = req.user.userId;
     const body = req.body;
 
+    const { modifier, baseStats, ...allBody } = body;
+
     try {
       const heroId = await getHeroId(userId);
       const updatedHero = await prisma.hero.update({
         where: { id: heroId },
-        data: { ...body },
+        data: {
+          ...allBody,
+          modifier: { update: { ...modifier } },
+          baseStats: { update: { ...baseStats } },
+        },
       });
       res.status(200).json(updatedHero);
     } catch (error) {
@@ -305,9 +374,16 @@ const HeroController = {
 
     try {
       const hero = await getHero(userId);
+      if (hero.gold < 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Not enough gold to reset hero stats ',
+        });
+      }
+
       const updatedHero = await prisma.hero.update({
         where: { id: hero.id },
-        data: { ...getLevelStatsPoints(hero.level) },
+        data: { ...getLevelStatsPoints(hero.level), gold: { decrement: 100 } },
       });
       res.status(200).json({
         success: true,

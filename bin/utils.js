@@ -28,13 +28,21 @@ function sumModifiers(...modifiers) {
     }
   });
 
-  if (typeof result.strength === 'number') {
-    result.maxHealth = result.constitution * 10;
-  }
+  return result;
+}
+function subtractModifiers(firstModifier, ...modifiers) {
+  const result = { ...firstModifier }; 
 
-  if (typeof result.intelligence === 'number') {
-    result.maxMana = result.intelligence * 10;
-  }
+  modifiers.forEach((modifier) => {
+    for (const key in modifier) {
+      const value = modifier[key];
+      if (typeof value === 'number') {
+     
+        result[key] = (result[key] || 0) - value;
+      }
+    
+    }
+  });
 
   return result;
 }
@@ -99,16 +107,74 @@ const onHtml = (url) => {
 };
 
 const equipItem = async (heroId, inventoryItemId, slot) => {
-  return prisma.$transaction([
-    prisma.equipment.create({
-      data: { heroId, inventoryItemId, slot },
-      include: { inventoryItem: true },
+  const [hero, inventoryItem] = await prisma.$transaction([
+    prisma.hero.findUnique({
+      where: { id: heroId },
+      include: { modifier: true },
     }),
     prisma.inventoryItem.update({
       where: { id: inventoryItemId },
       data: { isEquipped: true },
+      include: { gameItem: { include: { modifier: true } } }, //
     }),
   ]);
+
+  const sumModifier = sumModifiers(
+    hero.modifier,
+    inventoryItem.gameItem.modifier
+  );
+
+  const [equipment] = await prisma.$transaction([
+    prisma.equipment.create({
+      data: { heroId, inventoryItemId, slot },
+      include: { inventoryItem: true },
+    }),
+    prisma.hero.update({
+      where: { id: heroId },
+      data: {
+        modifier: {
+          update: { ...sumModifier, id: undefined },
+        },
+      },
+    }),
+  ]);
+
+  return [equipment, inventoryItem];
+};
+
+const unEquipItem = async (heroId, inventoryItemId) => {
+  const [hero, inventoryItem] = await prisma.$transaction([
+    prisma.hero.findUnique({
+      where: { id: heroId },
+      include: { modifier: true },
+    }),
+    prisma.inventoryItem.update({
+      where: { id: inventoryItemId },
+      data: { isEquipped: false },
+      include: { gameItem: { include: { modifier: true } } }, //
+    }),
+  ]);
+
+  const sumModifier = subtractModifiers(
+    hero.modifier,
+    inventoryItem.gameItem.modifier
+  );
+
+  const [equipment] = await prisma.$transaction([
+    prisma.equipment.deleteMany({
+      where: { heroId, inventoryItemId },
+    }),
+    prisma.hero.update({
+      where: { id: heroId },
+      data: {
+        modifier: {
+          update: { ...sumModifier, id: undefined },
+        },
+      },
+    }),
+  ]);
+
+  return [equipment, inventoryItem];
 };
 
 const unEquipExistingItem = async (heroId, slot) => {
@@ -116,13 +182,7 @@ const unEquipExistingItem = async (heroId, slot) => {
     where: { heroId, slot },
   });
   if (existingEquipment) {
-    return prisma.$transaction([
-      prisma.equipment.delete({ where: { id: existingEquipment.id } }),
-      prisma.inventoryItem.update({
-        where: { id: existingEquipment.inventoryItemId },
-        data: { isEquipped: false },
-      }),
-    ]);
+    return unEquipItem(heroId, existingEquipment.inventoryItemId);
   }
 };
 
@@ -131,8 +191,10 @@ module.exports = {
   userOffline,
   onHtml,
   sumModifiers,
+  subtractModifiers,
   getHeroId,
   equipItem,
   unEquipExistingItem,
   getHero,
+  unEquipItem,
 };

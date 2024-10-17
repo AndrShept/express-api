@@ -7,14 +7,14 @@ const heroRegeneration = async (username, socket, hero) => {
     (hero.modifier.constitution * 30 + hero.modifier.strength * 10);
   const manaTime = MANA_REGEN - hero.modifier.intelligence * 40;
   const healthInterval = setInterval(async () => {
-    if (hero.modifier.health < hero.modifier.maxHealth) {
+    if (hero.health < hero.modifier.maxHealth) {
       const updatedHero = await prisma.hero?.update({
         where: { id: hero?.id },
-        data: { modifier: { update: { health: { increment: 1 } } } },
+        data: {  health: { increment: 1 } },
         include: { modifier: true },
       });
       const finalHealth = Math.min(
-        updatedHero.modifier.health,
+        updatedHero.health,
         updatedHero.modifier.maxHealth
       );
       socket.emit(username, { health: finalHealth });
@@ -24,14 +24,14 @@ const heroRegeneration = async (username, socket, hero) => {
     }
   }, healthTime);
   const manaInterval = setInterval(async () => {
-    if (hero.modifier.mana < hero.modifier.maxMana) {
+    if (hero.mana < hero.modifier.maxMana) {
       const updatedHero = await prisma.hero?.update({
         where: { id: hero?.id },
-        data: { modifier: { update: { mana: { increment: 1 } } } },
+        data: { mana: { increment: 1 } },
         include: { modifier: true },
       });
       const finalMana = Math.min(
-        updatedHero.modifier.mana,
+        updatedHero.mana,
         updatedHero.modifier.maxMana
       );
       socket.emit(username, { mana: finalMana });

@@ -55,6 +55,8 @@ model Hero {
   gold      Float   @default(0)
   premCoin  Int     @default(0)
   isBattle  Boolean @default(false)
+  health    Int     @default(0)
+  mana      Int     @default(0)
 
   inventorySlots Int @default(40)
 
@@ -63,6 +65,9 @@ model Hero {
 
   statsPoints     Int @default(10)
   freeStatsPoints Int @default(0)
+
+  baseStats   BaseStats? @relation(fields: [baseStatsId], references: [id])
+  baseStatsId String?    @db.ObjectId
 
   modifier   Modifier? @relation(fields: [modifierId], references: [id])
   modifierId String?   @db.ObjectId
@@ -80,11 +85,26 @@ model Hero {
   @@map("heroes")
 }
 
+model BaseStats {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  strength     Int    @default(10)
+  dexterity    Int    @default(10)
+  intelligence Int    @default(10)
+  constitution Int    @default(10)
+  luck         Int    @default(5)
+  Hero         Hero[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("base-stats")
+}
+
 model GameItem {
   id   String @id @default(auto()) @map("_id") @db.ObjectId
   name String
 
-  price      Int?            @default(0)
+  price      Int?           @default(0)
   type       ItemType
   slot       EquipmentSlot?
   weaponType WeaponType?
@@ -106,11 +126,11 @@ model GameItem {
 model Equipment {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  hero   Hero?   @relation(fields: [heroId], references: [id], onDelete: Cascade)
+  hero   Hero?  @relation(fields: [heroId], references: [id], onDelete: Cascade)
   heroId String @db.ObjectId
 
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
-  inventoryItemId String        @db.ObjectId
+  inventoryItemId String         @db.ObjectId
 
   isEquipped    Boolean @default(true)
   isCanEquipped Boolean @default(false)
@@ -120,6 +140,7 @@ model Equipment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+
   @@map("equipments")
 }
 
@@ -127,9 +148,9 @@ model InventoryItem {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   quantity   Int?      @default(1)
   hero       Hero?     @relation(fields: [heroId], references: [id], onDelete: Cascade)
-  heroId     String   @db.ObjectId
+  heroId     String    @db.ObjectId
   gameItem   GameItem? @relation(fields: [gameItemId], references: [id])
-  gameItemId String   @db.ObjectId
+  gameItemId String    @db.ObjectId
 
   equipments Equipment[]
 
@@ -138,6 +159,7 @@ model InventoryItem {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
 
   @@map("inventory-items")
 }
@@ -153,9 +175,6 @@ model Modifier {
   intelligence Int?
   constitution Int?
   luck         Int?
-
-  health Int @default(0)
-  mana   Int @default(0)
 
   maxHealth Int?
   maxMana   Int?
