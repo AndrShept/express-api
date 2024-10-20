@@ -58,6 +58,7 @@ model Hero {
   health    Int     @default(0)
   mana      Int     @default(0)
 
+
   inventorySlots Int @default(40)
 
   currentExperience Int @default(0)

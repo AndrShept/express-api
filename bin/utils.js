@@ -1,4 +1,5 @@
 const { prisma } = require('../prisma/prisma');
+const { HP_MULTIPLIER_COST, MANA_MULTIPLIER_INT } = require('./constant');
 
 const userOnline = async (userId) => {
   const user = await prisma.user.update({
@@ -31,16 +32,14 @@ function sumModifiers(...modifiers) {
   return result;
 }
 function subtractModifiers(firstModifier, ...modifiers) {
-  const result = { ...firstModifier }; 
+  const result = { ...firstModifier };
 
   modifiers.forEach((modifier) => {
     for (const key in modifier) {
       const value = modifier[key];
       if (typeof value === 'number') {
-     
         result[key] = (result[key] || 0) - value;
       }
-    
     }
   });
 
@@ -60,6 +59,7 @@ const getHero = async (userId) => {
     where: {
       userId,
     },
+    include: { modifier: true },
   });
   return hero;
 };
@@ -106,84 +106,95 @@ const onHtml = (url) => {
   `;
 };
 
-const equipItem = async (heroId, inventoryItemId, slot) => {
-  const [hero, inventoryItem] = await prisma.$transaction([
-    prisma.hero.findUnique({
-      where: { id: heroId },
-      include: { modifier: true },
-    }),
-    prisma.inventoryItem.update({
-      where: { id: inventoryItemId },
-      data: { isEquipped: true },
-      include: { gameItem: { include: { modifier: true } } }, //
-    }),
-  ]);
+const filterModifierFields = (modifier) => {
+  const { id, buffs, inventoryItems, hero, ...validModifier } = modifier;
+  return validModifier;
+};
+function addModifiers(firstModifier, ...modifiers) {
+  const result = { ...firstModifier };
+
+  modifiers.forEach((modifier) => {
+    Object.keys(modifier).forEach((key) => {
+      const value = modifier[key];
+      if (typeof value === 'number') {
+        result[key] = (result[key] || 0) + value;
+      }
+    });
+  });
+
+  return result;
+}
+const calculateHpAndMana = (modifier) => {
+  return {
+    ...modifier,
+    maxHealth:
+      modifier.constitution * HP_MULTIPLIER_COST +
+      (modifier.maxHealth ? modifier.maxHealth : 0),
+    maxMana:
+      modifier.intelligence * MANA_MULTIPLIER_INT +
+      (modifier.maxMana ? modifier.maxMana : 0),
+  };
+};
+
+const sumModifierEquipStatsBuffs = async (userId) => {
+  const hero = await prisma.hero.findFirst({
+    where: { userId },
+    include: { buffs: { include: { modifier: true } }, baseStats: true },
+  });
+
+  const findAllEquips = await prisma.equipment.findMany({
+    where: { heroId: hero.id },
+    include: {
+      inventoryItem: {
+        include: { gameItem: { include: { modifier: true } } },
+      },
+    },
+  });
+  const allBuffs = hero.buffs.map((buff) => buff.modifier);
+  const allEquipModifier = findAllEquips.map(
+    (equip) => equip.inventoryItem.gameItem.modifier
+  );
 
   const sumModifier = sumModifiers(
-    hero.modifier,
-    inventoryItem.gameItem.modifier
+    ...allEquipModifier.length === 0 ? [zeroModifiers()] : allEquipModifier,
+    ...allBuffs.length === 0 ? [zeroModifiers()]  : allBuffs,
+    {
+      ...hero.baseStats,
+      id: undefined,
+      createdAt: undefined,
+      updatedAt: undefined,
+    },
   );
 
-  const [equipment] = await prisma.$transaction([
-    prisma.equipment.create({
-      data: { heroId, inventoryItemId, slot },
-      include: { inventoryItem: true },
-    }),
-    prisma.hero.update({
-      where: { id: heroId },
-      data: {
-        modifier: {
-          update: { ...sumModifier, id: undefined },
-        },
-      },
-    }),
-  ]);
-
-  return [equipment, inventoryItem];
+  const sumModifierByCalculateHpMana = calculateHpAndMana(sumModifier);
+  return sumModifierByCalculateHpMana;
 };
 
-const unEquipItem = async (heroId, inventoryItemId) => {
-  const [hero, inventoryItem] = await prisma.$transaction([
-    prisma.hero.findUnique({
-      where: { id: heroId },
-      include: { modifier: true },
-    }),
-    prisma.inventoryItem.update({
-      where: { id: inventoryItemId },
-      data: { isEquipped: false },
-      include: { gameItem: { include: { modifier: true } } }, //
-    }),
-  ]);
+const zeroModifiers = () => {
+  return {
+    minDamage: 0,
+    maxDamage: 0,
+    strength: 0,
+    dexterity: 0,
+    intelligence: 0,
+    constitution: 0,
+    luck: 0,
 
-  const sumModifier = subtractModifiers(
-    hero.modifier,
-    inventoryItem.gameItem.modifier
-  );
-
-  const [equipment] = await prisma.$transaction([
-    prisma.equipment.deleteMany({
-      where: { heroId, inventoryItemId },
-    }),
-    prisma.hero.update({
-      where: { id: heroId },
-      data: {
-        modifier: {
-          update: { ...sumModifier, id: undefined },
-        },
-      },
-    }),
-  ]);
-
-  return [equipment, inventoryItem];
-};
-
-const unEquipExistingItem = async (heroId, slot) => {
-  const existingEquipment = await prisma.equipment.findFirst({
-    where: { heroId, slot },
-  });
-  if (existingEquipment) {
-    return unEquipItem(heroId, existingEquipment.inventoryItemId);
-  }
+    maxHealth: 0,
+    maxMana: 0,
+    manaRegeneration: 0,
+    healthRegeneration: 0,
+    armor: 0,
+    magicResistances: 0,
+    evasion: 0,
+    spellDamage: 0,
+    spellDamageCritPower: 0,
+    spellDamageCritChance: 0,
+    meleeDamage: 0,
+    meleeDamageCritPower: 0,
+    meleeDamageCritChance: 0,
+    duration: 0,
+  };
 };
 
 module.exports = {
@@ -193,8 +204,10 @@ module.exports = {
   sumModifiers,
   subtractModifiers,
   getHeroId,
-  equipItem,
-  unEquipExistingItem,
   getHero,
-  unEquipItem,
+  filterModifierFields,
+  addModifiers,
+  zeroModifiers,
+  sumModifierEquipStatsBuffs,
+  calculateHpAndMana,
 };

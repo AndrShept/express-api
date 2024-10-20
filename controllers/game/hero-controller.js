@@ -2,10 +2,8 @@ const { getLevelStatsPoints } = require('../../bin/level');
 const {
   sumModifiers,
   getHeroId,
-  equipItem,
-  unEquipExistingItem,
   getHero,
-  unEquipItem,
+  sumModifierEquipStatsBuffs,
 } = require('../../bin/utils');
 const { prisma } = require('../../prisma/prisma');
 
@@ -13,12 +11,12 @@ const HeroController = {
   getMyHero: async (req, res, next) => {
     const { id } = req.params;
     const userId = req.user.userId;
-
+    const sumModifier = await sumModifierEquipStatsBuffs(userId);
     try {
-      const hero = await prisma.hero.findFirst({
-        where: {
-          userId,
-        },
+      const heroId = await getHeroId(userId);
+      const hero = await prisma.hero.update({
+        where: { id: heroId },
+        data: { modifier: { update: { ...sumModifier, id: undefined } } },
         include: {
           buffs: { include: { modifier: true } },
           modifier: true,
@@ -40,15 +38,7 @@ const HeroController = {
         },
       });
 
-      const sumHeroStats = sumModifiers(
-        {
-          ...hero.baseStats,
-          id: undefined,
-        },
-        { ...hero.modifier, id: undefined }
-      );
-
-      res.status(200).json({ ...hero, modifier: sumHeroStats });
+      res.status(200).json({ ...hero });
     } catch (error) {
       next(error);
     }
@@ -119,106 +109,52 @@ const HeroController = {
 
   equipHeroItem: async (req, res, next) => {
     const userId = req.user.userId;
-    const { inventoryItemId } = req.body;
-
+    const { inventoryItemId, slot } = req.body;
     if (!inventoryItemId) {
       return res.status(400).json({
         success: false,
         message: 'inventoryItemId not found',
       });
     }
+    if (!slot) {
+      return res.status(400).json({
+        success: false,
+        message: 'slot not found',
+      });
+    }
 
     try {
-      const heroId = await getHeroId(userId);
-      const inventoryItem = await prisma.inventoryItem.findUnique({
-        where: { id: inventoryItemId },
-        include: { gameItem: true },
+      const hero = await getHero(userId);
+      const heroId = hero.id;
+
+      const newEquipment = await prisma.equipment.create({
+        data: {
+          slot,
+          heroId,
+          inventoryItemId,
+        },
       });
 
-      const { weaponType, type } = inventoryItem.gameItem;
+      const sumModifier = await sumModifierEquipStatsBuffs(userId);
 
-      if (weaponType === 'TWO_HAND') {
-        const rightHandOccupied = await prisma.equipment.findFirst({
-          where: { heroId, slot: 'RIGHT_HAND' },
-        });
-        const leftHandOccupied = await prisma.equipment.findFirst({
-          where: { heroId, slot: 'LEFT_HAND' },
-        });
-
-        if (rightHandOccupied || leftHandOccupied) {
-          return res.status(409).json({
-            success: false,
-            message: 'Please unequip both hands first',
-          });
-        }
-        await equipItem(heroId, inventoryItemId, 'RIGHT_HAND');
-      } else if (weaponType === 'ONE_HAND') {
-        const rightHandOccupied = await prisma.equipment.findFirst({
-          where: { heroId, slot: 'RIGHT_HAND' },
-        });
-        const leftHandOccupied = await prisma.equipment.findFirst({
-          where: { heroId, slot: 'LEFT_HAND' },
-        });
-
-        if (rightHandOccupied && leftHandOccupied) {
-          return res.status(409).json({
-            success: false,
-            message: 'Please unequip both hands first',
-          });
-        }
-        const slot = rightHandOccupied ? 'LEFT_HAND' : 'RIGHT_HAND';
-        await equipItem(heroId, inventoryItemId, slot);
-      } else if (type === 'SHIELD') {
-        const leftHandOccupied = await prisma.equipment.findFirst({
-          where: { heroId, slot: 'LEFT_HAND' },
-        });
-        const rightHandOccupied = await prisma.equipment.findFirst({
-          where: { heroId, slot: 'RIGHT_HAND' },
-          include: { inventoryItem: { include: { gameItem: true } } },
-        });
-        if (
-          rightHandOccupied?.inventoryItem.gameItem.weaponType === 'TWO_HAND'
-        ) {
-          return res.status(409).json({
-            success: false,
-            message: 'Please unequip two-hand weapon first',
-          });
-        }
-        if (leftHandOccupied) {
-          return res.status(409).json({
-            success: false,
-            message: 'Please unequip left hand first',
-          });
-        }
-        await equipItem(heroId, inventoryItemId, 'LEFT_HAND');
-      } else if (type === 'RING') {
-        const rightRingOccupied = await prisma.equipment.findFirst({
-          where: { heroId, slot: 'RING_RIGHT' },
-        });
-        const leftRingOccupied = await prisma.equipment.findFirst({
-          where: { heroId, slot: 'RING_LEFT' },
-        });
-        if (rightRingOccupied && leftRingOccupied) {
-          return res
-            .status(409)
-            .json({ success: false, message: 'Both ring slots are occupied' });
-        }
-        const slot = rightRingOccupied ? 'RING_LEFT' : 'RING_RIGHT';
-        await equipItem(heroId, inventoryItemId, slot);
-      } else {
-        const existingSlot = await prisma.equipment.findFirst({
-          where: { heroId, slot: type },
-        });
-        if (existingSlot) {
-          await unEquipExistingItem(heroId, type);
-        }
-        await equipItem(heroId, inventoryItemId, type);
-      }
-
+      await prisma.hero.update({
+        where: { id: heroId },
+        data: {
+          health: Math.min(sumModifier.maxHealth, hero.health),
+          mana: Math.min(sumModifier.maxMana, hero.mana),
+          modifier: { update: { ...sumModifier, id: undefined } },
+          inventorys: {
+            update: {
+              where: { id: inventoryItemId },
+              data: { isEquipped: true },
+            },
+          },
+        },
+      });
       res.status(200).json({
         success: true,
         message: 'Item has been equipped',
-        data: inventoryItem,
+        data: newEquipment,
       });
     } catch (error) {
       next(error);
@@ -228,26 +164,49 @@ const HeroController = {
     const userId = req.user.userId;
     const { inventoryItemId } = req.body;
 
+    if (!inventoryItemId) {
+      return res.status(404).json({
+        success: false,
+        message: 'inventoryItemId not found',
+      });
+    }
+
     try {
-      const hero = await prisma.hero.findFirst({
-        where: { userId },
+      const hero = await getHero(userId);
+      const heroId = hero.id;
+      const deletedEquip = await prisma.equipment.deleteMany({
+        where: {
+          heroId,
+          inventoryItemId,
+        },
       });
-      const inventoryLength = await prisma.inventoryItem.count({
-        where: { isEquipped: false },
+
+      const sumModifier = await sumModifierEquipStatsBuffs(userId);
+
+      await prisma.hero.update({
+        where: { id: heroId },
+        data: {
+          health: Math.min(sumModifier.maxHealth, hero.health),
+          mana: Math.min(sumModifier.maxMana, hero.mana),
+
+          modifier: {
+            update: {
+              ...sumModifier,
+              id: undefined,
+            },
+          },
+          inventorys: {
+            update: {
+              where: { id: inventoryItemId },
+              data: { isEquipped: false },
+            },
+          },
+        },
       });
-      if (inventoryLength >= hero.inventorySlots) {
-        return res.status(409).json({
-          success: false,
-          message: 'Item cannot be unequipped because inventory is full',
-        });
-      }
-
-      const unEquippedItem = await unEquipItem(hero.id, inventoryItemId);
-
       res.status(200).json({
         success: true,
         message: 'Item has been unEquipped',
-        data: unEquippedItem[1],
+        data: deletedEquip,
       });
     } catch (error) {
       next(error);
