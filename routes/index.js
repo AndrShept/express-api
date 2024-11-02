@@ -167,9 +167,11 @@ router.get('/hero', authToken, HeroController.getMyHero);
 router.post('/hero', authToken, HeroController.createHero);
 router.post('/hero-equip', authToken, HeroController.equipHeroItem);
 router.post('/hero-unEquip', authToken, HeroController.unEquipHeroItem);
+router.post('/drink-potion', authToken, HeroController.drinkPotion);
 router.post('/add-inventory', authToken, HeroController.addHeroItemInventory);
 router.put('/hero-update', authToken, HeroController.updateHero);
 router.put('/reset-stats', authToken, HeroController.resetStats);
+router.delete('/remove-buff', authToken, HeroController.removeBuff);
 
 //ITEM
 router.get('/items', authToken, ItemController.getAllItems);

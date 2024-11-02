@@ -4,6 +4,9 @@ const {
   getHeroId,
   getHero,
   sumModifierEquipStatsBuffs,
+  addModifiers,
+  addBuffsTimeRemaining,
+  subtractModifiers,
 } = require('../../bin/utils');
 const { prisma } = require('../../prisma/prisma');
 
@@ -18,7 +21,6 @@ const HeroController = {
         where: { id: heroId },
         data: { modifier: { update: { ...sumModifier, id: undefined } } },
         include: {
-          buffs: { include: { modifier: true } },
           modifier: true,
           baseStats: true,
           equipments: {
@@ -29,16 +31,16 @@ const HeroController = {
             },
           },
           inventorys: {
-            where: {
-              isEquipped: false,
-            },
+
             include: { gameItem: { include: { modifier: true } } },
             orderBy: { updatedAt: 'asc' },
           },
         },
       });
 
-      res.status(200).json({ ...hero });
+      res
+        .status(200)
+        .json({ ...hero, buffs: await addBuffsTimeRemaining(heroId) });
     } catch (error) {
       next(error);
     }
@@ -307,12 +309,160 @@ const HeroController = {
     }
   },
 
+  drinkPotion: async (req, res, next) => {
+    const { inventoryItemId } = req.body;
+    const userId = req.user.userId;
+
+    if (!inventoryItemId) {
+      return res.status(400).json('inventoryItemId not found');
+    }
+    const inventoryItem = await prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+      include: { gameItem: { include: { modifier: true } } },
+    });
+    if (!inventoryItem) {
+      return res.status(404).json({ message: 'Inventory item not found' });
+    }
+    const hero = await prisma.hero.findFirst({
+      where: {
+        userId,
+      },
+      include: { modifier: true },
+    });
+    if (!hero) {
+      return res.status(404).json({ message: 'Hero  not found' });
+    }
+
+    const { maxHealth, maxMana, duration } = inventoryItem.gameItem.modifier;
+    const isHealthFull = hero.health === hero.modifier.maxHealth;
+    const isManaFull = hero.mana === hero.modifier.maxMana;
+
+    if (
+      (isHealthFull && !maxMana && !duration) ||
+      (isManaFull && !maxHealth && !duration)
+    ) {
+      return res.status(409).json({
+        success: false,
+        message: `Your ${
+          maxMana ? 'mana' : 'health'
+        } is already full. Nothing to restore.`,
+      });
+    }
+    const updateQuantity =
+      inventoryItem.quantity > 1
+        ? {
+            update: {
+              where: { id: inventoryItemId },
+              data: { quantity: { decrement: 1 } },
+            },
+          }
+        : { delete: { id: inventoryItemId } };
+    const sumModifier = addModifiers(
+      hero.modifier,
+      inventoryItem.gameItem.modifier
+    );
+    try {
+      const findExistBuff = await prisma.buff.findFirst({
+        where: { gameItemId: inventoryItem.gameItemId },
+      });
+      if (findExistBuff) {
+        await prisma.buff.delete({
+          where: { id: findExistBuff.id },
+        });
+      }
+
+      await prisma.hero.update({
+        where: { id: hero.id },
+
+        data: {
+          health: {
+            set: Math.min(hero.health + maxHealth, hero.modifier.maxHealth),
+          },
+          mana: {
+            set: Math.min(hero.mana + maxMana, hero.modifier.maxMana),
+          },
+          modifier: inventoryItem.gameItem.modifier.duration ? {
+            update: { ...sumModifier, id: undefined } ,
+          }: undefined,
+          buffs: inventoryItem.gameItem.modifier.duration ?{
+            create: {
+              duration: inventoryItem.gameItem.modifier.duration,
+              imageUrl: inventoryItem.gameItem.imageUrl,
+              name: inventoryItem.gameItem.name,
+              gameItemId: inventoryItem.gameItemId,
+              modifierId: inventoryItem.gameItem.modifierId,
+            },
+          } : undefined,
+          inventorys: updateQuantity,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'You successfully drank ',
+        data: inventoryItem,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  removeBuff: async (req, res, next) => {
+    const { buffId } = req.body;
+    const userId = req.user.userId;
+
+    if (!buffId) {
+      return res.status(404).json('buffId not found');
+    }
+    const buff = await prisma.buff.findFirst({
+      where: { gameItemId: buffId },
+      include: { modifier: true },
+    });
+    if (!buff) {
+      return res.status(404).json('buff not found');
+    }
+    const hero = await prisma.hero.findFirst({
+      where: { userId },
+      include: { modifier: true },
+    });
+    if (!hero) {
+      return res.status(404).json('hero not found');
+    }
+    const sumModifier = subtractModifiers(hero.modifier, buff.modifier);
+
+
+    try {
+      await prisma.hero.update({
+        where: { id: hero.id },
+        data: {
+          buffs: { delete: { id: buff.id } },
+
+          modifier: { update: { ...sumModifier, id: undefined } },
+        },
+      });
+
+      await prisma.hero.update({
+        where: { id: hero.id },
+        data: {
+          health: Math.min(hero.health, hero.modifier.maxHealth),
+          mana: Math.min(hero.mana, hero.modifier.maxMana),
+        },
+      });
+
+      res.status(200).json({
+        message: 'Buff success deleted',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   updateHero: async (req, res, next) => {
     const userId = req.user.userId;
     const body = req.body;
 
     const { modifier, baseStats, ...allBody } = body;
-
+    console.log(allBody);
     try {
       const heroId = await getHeroId(userId);
       const updatedHero = await prisma.hero.update({

@@ -156,14 +156,14 @@ const sumModifierEquipStatsBuffs = async (userId) => {
   );
 
   const sumModifier = sumModifiers(
-    ...allEquipModifier.length === 0 ? [zeroModifiers()] : allEquipModifier,
-    ...allBuffs.length === 0 ? [zeroModifiers()]  : allBuffs,
+    ...(allEquipModifier.length === 0 ? [zeroModifiers()] : allEquipModifier),
+    ...(allBuffs.length === 0 ? [zeroModifiers()] : allBuffs),
     {
       ...hero.baseStats,
       id: undefined,
       createdAt: undefined,
       updatedAt: undefined,
-    },
+    }
   );
 
   const sumModifierByCalculateHpMana = calculateHpAndMana(sumModifier);
@@ -197,6 +197,30 @@ const zeroModifiers = () => {
   };
 };
 
+async function addBuffsTimeRemaining(heroId) {
+  try {
+    const buffs = await prisma.buff.findMany({
+      where: { heroId },
+      include: { modifier: true, gameItem: true }
+    });
+
+    const newBuffs = buffs.map((buff) => {
+      const currentTime = Date.now();
+      const createdAtTime = new Date(buff.createdAt).getTime();
+      const timeElapsed = currentTime - createdAtTime;
+      const timeRemaining = Math.max(buff.duration - timeElapsed, 0);
+
+      return {
+        ...buff,
+        timeRemaining
+      }
+    });
+    return newBuffs
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 module.exports = {
   userOnline,
   userOffline,
@@ -210,4 +234,5 @@ module.exports = {
   zeroModifiers,
   sumModifierEquipStatsBuffs,
   calculateHpAndMana,
+  addBuffsTimeRemaining
 };
