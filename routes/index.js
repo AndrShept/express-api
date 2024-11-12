@@ -4,6 +4,7 @@ const { upload, uploadAndOptimize } = require('../middleware/multer');
 const UserController = require('../controllers/user-controller');
 const PostController = require('../controllers/post-controller');
 const authToken = require('../middleware/auth');
+const getHero = require('../middleware/hero');
 const CommentController = require('../controllers/comment-controller');
 const LikeController = require('../controllers/like-controller');
 const FollowController = require('../controllers/follow-conroller');
@@ -15,6 +16,7 @@ const ReplyController = require('../controllers/reply-controller');
 const PhotoController = require('../controllers/photo-controller');
 const HeroController = require('../controllers/game/hero-controller');
 const ItemController = require('../controllers/game/item-controller');
+const DungeonController = require('../controllers/game/dungeon-controller');
 
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
@@ -177,5 +179,21 @@ router.delete('/remove-buff', authToken, HeroController.removeBuff);
 router.get('/items', authToken, ItemController.getAllItems);
 router.get('/novice-items', authToken, ItemController.getNoviceItems);
 router.post('/create-items', authToken, ItemController.createItem);
+router.delete('/delete-item', authToken, ItemController.deleteItem);
+
+//DUNGEON
+router.get('/dungeons', authToken, DungeonController.getDungeons);
+router.post(
+  '/dungeons-session',
+  authToken,
+  getHero,
+  DungeonController.createDungSession
+);
+router.put(
+  '/dungeons-session-status',
+  authToken,
+  getHero,
+  DungeonController.updateDungeonSessionStatus
+);
 
 module.exports = router;

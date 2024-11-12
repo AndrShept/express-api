@@ -52,7 +52,7 @@ const getHeroId = async (userId) => {
       userId,
     },
   });
-  return hero.id;
+  return hero?.id;
 };
 const getHero = async (userId) => {
   const hero = await prisma.hero.findFirst({
@@ -142,6 +142,7 @@ const sumModifierEquipStatsBuffs = async (userId) => {
     include: { buffs: { include: { modifier: true } }, baseStats: true },
   });
 
+
   const findAllEquips = await prisma.equipment.findMany({
     where: { heroId: hero.id },
     include: {
@@ -196,6 +197,12 @@ const zeroModifiers = () => {
     duration: 0,
   };
 };
+function calculateTimeRemaining(dungeonSession) {
+  const currentTime = Date.now();
+  const createdAtTime = new Date(dungeonSession?.createdAt).getTime();
+  const timeElapsed = currentTime - createdAtTime;
+  return Math.max(dungeonSession?.duration * 60000 - timeElapsed, 0);
+}
 
 async function addBuffsTimeRemaining(heroId) {
   try {
@@ -234,5 +241,6 @@ module.exports = {
   zeroModifiers,
   sumModifierEquipStatsBuffs,
   calculateHpAndMana,
+  calculateTimeRemaining,
   addBuffsTimeRemaining
 };

@@ -7,6 +7,7 @@ const {
   addModifiers,
   addBuffsTimeRemaining,
   subtractModifiers,
+  calculateTimeRemaining,
 } = require('../../bin/utils');
 const { prisma } = require('../../prisma/prisma');
 
@@ -14,9 +15,18 @@ const HeroController = {
   getMyHero: async (req, res, next) => {
     const { id } = req.params;
     const userId = req.user.userId;
+    const heroId = await getHeroId(userId);
+
+    if (!heroId) {
+      return res.status(404).json('Hero not found');
+    }
     const sumModifier = await sumModifierEquipStatsBuffs(userId);
+
     try {
-      const heroId = await getHeroId(userId);
+      const dungeonSessions = await prisma.dungeonSession.findMany({
+        where: { status: 'INPROGRESS', heroId: { has: heroId } },
+        include: { dungeon: true },
+      });
       const hero = await prisma.hero.update({
         where: { id: heroId },
         data: { modifier: { update: { ...sumModifier, id: undefined } } },
@@ -31,16 +41,29 @@ const HeroController = {
             },
           },
           inventorys: {
-
             include: { gameItem: { include: { modifier: true } } },
             orderBy: { updatedAt: 'asc' },
           },
         },
       });
-
-      res
-        .status(200)
-        .json({ ...hero, buffs: await addBuffsTimeRemaining(heroId) });
+      const updatedDungeonSessions = dungeonSessions.map((dungeon) => ({
+        ...dungeon,
+        timeRemaining: calculateTimeRemaining(dungeon),
+      }));
+      if (updatedDungeonSessions[0]?.timeRemaining === 0) {
+        await prisma.dungeonSession.update({
+          where: { id: updatedDungeonSessions[0].id },
+          data: {
+            status: 'FAILED',
+            endTime: new Date().toISOString(),
+          },
+        });
+      }
+      res.status(200).json({
+        ...hero,
+        buffs: await addBuffsTimeRemaining(heroId),
+        dungeonSessions: updatedDungeonSessions,
+      });
     } catch (error) {
       next(error);
     }
@@ -381,18 +404,22 @@ const HeroController = {
           mana: {
             set: Math.min(hero.mana + maxMana, hero.modifier.maxMana),
           },
-          modifier: inventoryItem.gameItem.modifier.duration ? {
-            update: { ...sumModifier, id: undefined } ,
-          }: undefined,
-          buffs: inventoryItem.gameItem.modifier.duration ?{
-            create: {
-              duration: inventoryItem.gameItem.modifier.duration,
-              imageUrl: inventoryItem.gameItem.imageUrl,
-              name: inventoryItem.gameItem.name,
-              gameItemId: inventoryItem.gameItemId,
-              modifierId: inventoryItem.gameItem.modifierId,
-            },
-          } : undefined,
+          modifier: inventoryItem.gameItem.modifier.duration
+            ? {
+                update: { ...sumModifier, id: undefined },
+              }
+            : undefined,
+          buffs: inventoryItem.gameItem.modifier.duration
+            ? {
+                create: {
+                  duration: inventoryItem.gameItem.modifier.duration,
+                  imageUrl: inventoryItem.gameItem.imageUrl,
+                  name: inventoryItem.gameItem.name,
+                  gameItemId: inventoryItem.gameItemId,
+                  modifierId: inventoryItem.gameItem.modifierId,
+                },
+              }
+            : undefined,
           inventorys: updateQuantity,
         },
       });
@@ -430,7 +457,6 @@ const HeroController = {
     }
     const sumModifier = subtractModifiers(hero.modifier, buff.modifier);
 
-
     try {
       await prisma.hero.update({
         where: { id: hero.id },
@@ -462,7 +488,7 @@ const HeroController = {
     const body = req.body;
 
     const { modifier, baseStats, ...allBody } = body;
-    console.log(allBody);
+
     try {
       const heroId = await getHeroId(userId);
       const updatedHero = await prisma.hero.update({

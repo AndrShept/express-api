@@ -24,8 +24,8 @@ const heroRegeneration = async (username, socket, hero) => {
       });
       constitution = updatedHero.modifier.constitution;
       strength = updatedHero.modifier.strength;
-      console.log('constitution', constitution);
-      console.log('healthTime', healthTime);
+      // console.log('constitution', constitution);
+      // console.log('healthTime', healthTime);
       socket.emit(username, { health: updatedHero.health });
     }, healthTime);
   };
@@ -41,27 +41,27 @@ const heroRegeneration = async (username, socket, hero) => {
         include: { modifier: true },
       });
       intelligence = updatedHero.modifier.intelligence;
-      console.log('intelligence', intelligence);
-      console.log('manaTime', manaTime);
+      // console.log('intelligence', intelligence);
+      // console.log('manaTime', manaTime);
       socket.emit(username, { mana });
     }, manaTime);
   };
 
   socket.on('go-health', (data) => {
-    console.log('go-health', data);
+    // console.log('go-health', data);
     startHealthRegen(data);
   });
   socket.on('go-mana', (data) => {
-    console.log('go-mana', data);
+    // console.log('go-mana', data);
     startManaRegen(data);
   });
 
   socket.on('stop-health', (data) => {
-    console.log('stop-health', data);
+    // console.log('stop-health', data);
     clearInterval(healthTimer);
   });
   socket.on('stop-mana', (data) => {
-    console.log('stop-mana', data);
+    // console.log('stop-mana', data);
     clearInterval(manaTimer);
   });
 

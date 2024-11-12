@@ -2,8 +2,6 @@ const { prisma } = require('../../prisma/prisma');
 
 const ItemController = {
   getAllItems: async (req, res, next) => {
-    const userId = req.user.userId;
-
     try {
       const gameItems = await prisma.gameItem.findMany({
         // where: { tag: 'ALL' },
@@ -16,8 +14,6 @@ const ItemController = {
     }
   },
   getNoviceItems: async (req, res, next) => {
-    const userId = req.user.userId;
-
     try {
       const noviceItems = await prisma.gameItem.findMany({
         where: { tag: 'NOVICE' },
@@ -30,10 +26,8 @@ const ItemController = {
     }
   },
   createItem: async (req, res, next) => {
-    const userId = req.user.userId;
     const body = req.body;
     const { modifier, ...data } = body;
-
 
     try {
       const newItem = await prisma.gameItem.create({
@@ -49,7 +43,23 @@ const ItemController = {
       next(error);
     }
   },
- 
+  deleteItem: async (req, res, next) => {
+    const body = req.body;
+    const { id } = body;
+
+    if (!id) {
+      return res.status(404).json('id not found');
+    }
+
+    try {
+      await prisma.inventoryItem.delete({
+        where: { id },
+      });
+      res.status(201).json({ success: true, message: 'Item success deleted' });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = ItemController;

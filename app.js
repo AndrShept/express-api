@@ -40,7 +40,7 @@ io.on('connection', async (socket) => {
   const username = socket.handshake.headers.username;
   console.log(`A user connected ${username}`);
   if (userId) {
-   await userOnline(userId);
+    userOnline(userId);
   }
   const hero = await getHeroWithModifiers(username);
   if (hero) {
