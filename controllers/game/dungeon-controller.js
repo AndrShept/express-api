@@ -3,16 +3,26 @@ const { prisma } = require('../../prisma/prisma');
 
 const DungeonController = {
   getDungeons: async (req, res, next) => {
-    const userId = req.user.userId;
-    const heroId = await getHeroId(userId);
-
-    if (!heroId) {
-      return res.status(404).json('HeroId not found');
-    }
     try {
       const dungeons = await prisma.dungeon.findMany();
 
       res.status(200).json(dungeons);
+    } catch (error) {
+      next(error);
+    }
+  },
+  getDungeonsSessionById: async (req, res, next) => {
+    const { dungeonSessionId } = req.params;
+    const heroId = req.hero.id;
+    try {
+      const dungeonSession = await prisma.dungeonSession.findUnique({
+        where: { id: dungeonSessionId },
+        include: { heroes: true, monsters: true ,dungeon: true},
+      });
+
+
+
+      res.status(200).json(dungeonSession);
     } catch (error) {
       next(error);
     }

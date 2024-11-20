@@ -30,6 +30,7 @@ const HeroController = {
       const hero = await prisma.hero.update({
         where: { id: heroId },
         data: { modifier: { update: { ...sumModifier, id: undefined } } },
+ 
         include: {
           modifier: true,
           baseStats: true,
@@ -63,6 +64,7 @@ const HeroController = {
         ...hero,
         buffs: await addBuffsTimeRemaining(heroId),
         dungeonSessions: updatedDungeonSessions,
+        
       });
     } catch (error) {
       next(error);

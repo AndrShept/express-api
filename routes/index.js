@@ -183,6 +183,12 @@ router.delete('/delete-item', authToken, ItemController.deleteItem);
 
 //DUNGEON
 router.get('/dungeons', authToken, DungeonController.getDungeons);
+router.get(
+  '/dungeons-session/:dungeonSessionId',
+  authToken,
+  getHero,
+  DungeonController.getDungeonsSessionById
+);
 router.post(
   '/dungeons-session',
   authToken,
