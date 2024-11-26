@@ -9,7 +9,7 @@ const { prisma } = require('../prisma/prisma');
       buffs: true,
       modifier: true,
       equipments: true,
-      inventorys: { include: { gameItem: { include: { modifier: true } } } },
+      // inventorys: { include: { gameItem: { include: { modifier: true } } } },
     },
   });
   

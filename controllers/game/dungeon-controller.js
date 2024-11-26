@@ -1,4 +1,4 @@
-const { getHeroId, getHero } = require('../../bin/utils');
+const { getHeroId, getHero, getMapJson } = require('../../bin/utils');
 const { prisma } = require('../../prisma/prisma');
 
 const DungeonController = {
@@ -17,10 +17,8 @@ const DungeonController = {
     try {
       const dungeonSession = await prisma.dungeonSession.findUnique({
         where: { id: dungeonSessionId },
-        include: { heroes: true, monsters: true ,dungeon: true},
+        include: {dungeon: true, dungeonHeroes: true },
       });
-
-
 
       res.status(200).json(dungeonSession);
     } catch (error) {
@@ -41,14 +39,14 @@ const DungeonController = {
     if (!dungeon) {
       return res.status(404).json('dungeon not found');
     }
-
-    const dungSessionInProgress = await prisma.dungeonSession.findMany({
+    const map = getMapJson(dungeon.id);
+    const dungSessionInProgress = await prisma.dungeonSession.findFirst({
       where: {
-        heroId: { has: heroId },
+        heroId,
         status: 'INPROGRESS',
       },
     });
-    if (dungSessionInProgress.length >= 1) {
+    if (dungSessionInProgress) {
       return res
         .status(409)
         .json(
@@ -63,13 +61,15 @@ const DungeonController = {
           duration: dungeon.duration,
           status: 'INPROGRESS',
           dungeonId,
-          heroId: { set: [heroId] },
-        },
-      });
-      await prisma.hero.update({
-        where: { id: heroId },
-        data: {
-          dungeonSessionId: { push: dungeonSession.id },
+          heroId,
+          mapHeight: map.height,
+          mapWidth: map.width,
+          tileSize: map.tileheight,
+          dungeonHeroes: {
+            create: {
+              heroId,
+            },
+          },
         },
       });
 

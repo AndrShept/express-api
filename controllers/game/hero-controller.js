@@ -24,13 +24,13 @@ const HeroController = {
 
     try {
       const dungeonSessions = await prisma.dungeonSession.findMany({
-        where: { status: 'INPROGRESS', heroId: { has: heroId } },
-        include: { dungeon: true },
+        where: { status: 'INPROGRESS', heroId },
+        include: { dungeon: true, dungeonHeroes: true, },
       });
       const hero = await prisma.hero.update({
         where: { id: heroId },
         data: { modifier: { update: { ...sumModifier, id: undefined } } },
- 
+
         include: {
           modifier: true,
           baseStats: true,
@@ -64,7 +64,6 @@ const HeroController = {
         ...hero,
         buffs: await addBuffsTimeRemaining(heroId),
         dungeonSessions: updatedDungeonSessions,
-        
       });
     } catch (error) {
       next(error);

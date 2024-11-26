@@ -13,6 +13,7 @@ const helmet = require('helmet');
 const { prisma } = require('./prisma/prisma');
 const game = require('./bin/game');
 const getHeroWithModifiers = require('./bin/getHeroWithModifiers');
+const { init } = require('./socket/main-socket');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,12 +29,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api', routes);
 routes.use(errorHandler);
 
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    credentials: true,
-  },
-});
+const io = init(server);
 
 io.on('connection', async (socket) => {
   const userId = socket.handshake.auth.userId;

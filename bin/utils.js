@@ -142,7 +142,6 @@ const sumModifierEquipStatsBuffs = async (userId) => {
     include: { buffs: { include: { modifier: true } }, baseStats: true },
   });
 
-
   const findAllEquips = await prisma.equipment.findMany({
     where: { heroId: hero.id },
     include: {
@@ -208,7 +207,7 @@ async function addBuffsTimeRemaining(heroId) {
   try {
     const buffs = await prisma.buff.findMany({
       where: { heroId },
-      include: { modifier: true, gameItem: true }
+      include: { modifier: true, gameItem: true },
     });
 
     const newBuffs = buffs.map((buff) => {
@@ -219,14 +218,22 @@ async function addBuffsTimeRemaining(heroId) {
 
       return {
         ...buff,
-        timeRemaining
-      }
+        timeRemaining,
+      };
     });
-    return newBuffs
+    return newBuffs;
   } catch (error) {
     console.error(error);
   }
 }
+
+const getMapJson = (dungeonId) => {
+  const dung = {
+    '672cc47ca5a57325eedefbf5': require('../json/Lair of Darkness.json'),
+    '67306f9f2563f8e4e84e52d1' : null
+  };
+  return dung[dungeonId];
+};
 
 module.exports = {
   userOnline,
@@ -242,5 +249,6 @@ module.exports = {
   sumModifierEquipStatsBuffs,
   calculateHpAndMana,
   calculateTimeRemaining,
-  addBuffsTimeRemaining
+  addBuffsTimeRemaining,
+  getMapJson
 };
