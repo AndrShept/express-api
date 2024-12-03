@@ -1,9 +1,11 @@
 const heroRegeneration = require('./heroRegeneration');
-const startDungeon = require('./startDungeon');
+const initDungeon = require('./initDungeon');
+const moveHero = require('./moveHero');
 
 const game = async (username, socket, hero) => {
   heroRegeneration(username, socket, hero);
-  startDungeon(socket, hero)
+  initDungeon(socket, hero);
+  moveHero(socket, hero)
 };
 
 module.exports = game;

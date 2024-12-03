@@ -25,7 +25,7 @@ const HeroController = {
     try {
       const dungeonSessions = await prisma.dungeonSession.findMany({
         where: { status: 'INPROGRESS', heroId },
-        include: { dungeon: true, dungeonHeroes: true, },
+        include: { dungeon: true, dungeonHeroes: true },
       });
       const hero = await prisma.hero.update({
         where: { id: heroId },
@@ -83,6 +83,8 @@ const HeroController = {
       modifier,
     } = body;
 
+    console.log('modifier', modifier);
+    console.log('statPoint', statPoints);
     try {
       const heroNameExist = await prisma.hero.findUnique({
         where: { name },
@@ -100,32 +102,46 @@ const HeroController = {
           statPoints,
           name,
           avatarUrl,
+          health: 50,
+          mana: 50,
+          gold: 100,
+          freeStatsPoints: 10,
+          baseStats: { create: {} },
           user: {
             connect: {
               id: userId,
             },
           },
+        },
+   
+      });
+      const heroMod = await prisma.hero.update({
+        where: { id: hero.id },
+        data: {
           modifier: {
-            create: {
-              ...sumModifiers(modifier),
-              health: 50,
-              mana: 50,
+            upsert: {
+              create: modifier,
+              update: modifier,
             },
           },
         },
+  
       });
-      await prisma.inventoryItem.createMany({
-        data: [
-          {
-            heroId: hero.id,
-            gameItemId: weapon.id,
-          },
-          {
-            heroId: hero.id,
-            gameItemId: breastplate.id,
-          },
-        ],
-      });
+
+      if (weapon && breastplate) {
+        await prisma.inventoryItem.createMany({
+          data: [
+            {
+              heroId: hero.id,
+              gameItemId: weapon.id,
+            },
+            {
+              heroId: hero.id,
+              gameItemId: breastplate.id,
+            },
+          ],
+        });
+      }
 
       res.status(201).json(hero);
     } catch (error) {

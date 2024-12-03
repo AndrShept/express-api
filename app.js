@@ -35,9 +35,9 @@ io.on('connection', async (socket) => {
   const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username;
   console.log(`A user connected ${username}`);
-  if (userId) {
-    userOnline(userId);
-  }
+  // if (userId) {
+  //   userOnline(userId);
+  // }
   const hero = await getHeroWithModifiers(username);
   if (hero) {
     game(username, socket, hero);

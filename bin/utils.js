@@ -235,6 +235,26 @@ const getMapJson = (dungeonId) => {
   return dung[dungeonId];
 };
 
+const building2DMap = (tiles, jsonMap) => {
+  const dungeonMap = [];
+  for (let i = 0; i < jsonMap.height; i++) {
+    const row = [];
+    for (let j = 0; j < jsonMap.width; j++) {
+      row.push(null);
+    }
+    dungeonMap.push(row);
+  }
+  tiles.forEach((obj) => {
+    const x = obj.x 
+    const y = obj.y 
+
+    dungeonMap[y][x] = obj;
+  });
+
+  return dungeonMap;
+};
+
+
 module.exports = {
   userOnline,
   userOffline,
@@ -250,5 +270,6 @@ module.exports = {
   calculateHpAndMana,
   calculateTimeRemaining,
   addBuffsTimeRemaining,
-  getMapJson
+  getMapJson,
+  building2DMap
 };

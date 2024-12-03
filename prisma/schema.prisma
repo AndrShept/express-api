@@ -274,7 +274,7 @@ model Tile {
   gid      Int
   height   Int
   width    Int
-  name     String
+  name     TileType
   rotation Int     @default(0)
   type     String  @default("")
   visible  Boolean @default(true)
@@ -334,6 +334,13 @@ enum Status {
   INPROGRESS
   COMPLETED
   FAILED
+}
+enum TileType {
+  wall
+  hero 
+  monster
+  chest 
+  loot 
 }
 
 enum Difficulty {

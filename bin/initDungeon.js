@@ -1,26 +1,8 @@
 const { prisma } = require('../prisma/prisma');
-const { getMapJson } = require('./utils');
+const { getMapJson, building2DMap } = require('./utils');
 
-const building2DMap = (mapObjects, jsonMap) => {
-  const dungeonMap = [];
-  for (let i = 0; i < jsonMap.height; i++) {
-    const row = [];
-    for (let j = 0; j < jsonMap.width; j++) {
-      row.push(null);
-    }
-    dungeonMap.push(row);
-  }
-  mapObjects.forEach((obj) => {
-    const x = obj.x / jsonMap.tilewidth;
-    const y = obj.y / jsonMap.tilewidth - 1;
 
-    dungeonMap[y][x] = obj;
-  });
-
-  return dungeonMap;
-};
-
-const startDungeon = async (socket, hero) => {
+const initDungeon = async (socket, hero) => {
   socket.on('dungeon-init', async (dungeonSessionId) => {
     const dungeonSession = await prisma.dungeonSession.findFirst({
       where: { heroId: hero.id, status: 'INPROGRESS' },
@@ -28,7 +10,11 @@ const startDungeon = async (socket, hero) => {
     });
     const jsonMap = getMapJson(dungeonSession?.dungeonId);
     if (!jsonMap) return;
-    const mapObjects = jsonMap.layers[0].objects;
+    const mapObjects = jsonMap.layers[0].objects.map((tile) => ({
+      ...tile,
+      x: tile.x / jsonMap.tilewidth,
+      y: tile.y / jsonMap.tilewidth - 1,
+    }));
     const tilewidth = jsonMap.tilewidth;
 
     if (!dungeonSession?.tiles.length) {
@@ -38,8 +24,8 @@ const startDungeon = async (socket, hero) => {
         height: tilewidth,
         width: tilewidth,
         name: 'hero',
-        x: tilewidth,
-        y: tilewidth * 2,
+        x: 1,
+        y: 1,
         hero,
       });
 
@@ -72,8 +58,8 @@ const startDungeon = async (socket, hero) => {
           height: tilewidth,
           width: tilewidth,
           name: 'hero',
-          x: tilewidth,
-          y: tilewidth * 2,
+          x: 1,
+          y: 2,
           heroId: hero.id,
         },
       });
@@ -84,13 +70,15 @@ const startDungeon = async (socket, hero) => {
       include: { hero: true, monster: true },
     });
     const dungeonMap = building2DMap(tiles, jsonMap);
+   const findHero = tiles.find(tile => tile.heroId === hero.id)
     socket.emit(dungeonSessionId, {
       dungeonMap,
       height: jsonMap.height,
       width: jsonMap.width,
       tileSize: jsonMap.tilewidth,
+      heroPos : {x: findHero.x, y: findHero.y}
     });
   });
 };
 
-module.exports = startDungeon;
+module.exports = initDungeon;
